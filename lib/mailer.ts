@@ -86,3 +86,40 @@ export async function sendVerificationEmail(to: string, url: string) {
     text: `Confirm your Nexora email by visiting: ${url}`,
   });
 }
+
+/**
+ * Password-reset email. Triggered by Better Auth's `sendResetPassword` when a
+ * resident requests a reset from the forgot-password page. The link is
+ * single-use and expires; the copy says so in plain language.
+ */
+export async function sendPasswordResetEmail(to: string, url: string) {
+  const html = `
+    <div style="font-family: 'IBM Plex Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
+      <h1 style="font-size: 20px; margin: 0 0 16px;">Reset your password</h1>
+      <p style="font-size: 14px; line-height: 1.6; margin: 0 0 24px; color: #3d3d3d;">
+        We received a request to reset the password for your Nexora account.
+        Click the button below to choose a new one. This link can only be used
+        once and will expire soon.
+      </p>
+      <a href="${url}"
+         style="display: inline-block; background: #f59e0b; color: #3a2a00; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 26px;">
+        Reset password
+      </a>
+      <p style="font-size: 12px; color: #6b6b6b; line-height: 1.6; margin: 24px 0 0;">
+        If the button doesn't work, copy and paste this link into your browser:<br />
+        <a href="${url}" style="color: #a15c00; word-break: break-all;">${url}</a>
+      </p>
+      <p style="font-size: 12px; color: #6b6b6b; margin: 16px 0 0;">
+        If you didn't request this, you can safely ignore this email. Your
+        password won't change until you open the link above.
+      </p>
+    </div>
+  `;
+
+  await sendMail({
+    to,
+    subject: "Reset your Nexora password",
+    html,
+    text: `Reset your Nexora password by visiting: ${url}`,
+  });
+}
