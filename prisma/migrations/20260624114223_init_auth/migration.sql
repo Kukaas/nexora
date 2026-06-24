@@ -7,9 +7,10 @@ CREATE TYPE "IDType" AS ENUM ('DRIVER_LICENSE', 'PASSPORT', 'SSS', 'GSIS', 'PRC'
 -- CreateTable
 CREATE TABLE "user" (
     "id" TEXT NOT NULL,
-    "first_name" TEXT NOT NULL,
+    "name" TEXT,
+    "first_name" TEXT,
     "middle_name" TEXT,
-    "last_name" TEXT NOT NULL,
+    "last_name" TEXT,
     "email" TEXT NOT NULL,
     "email_verified" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
