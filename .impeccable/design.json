@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-24T00:00:00.000Z",
+  "title": "Design System: Nexora",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Service Amber",
+        "canonical": "oklch(0.769 0.165 70.08)",
+        "tonalRamp": [
+          "oklch(0.25 0.05 70)",
+          "oklch(0.35 0.08 70)",
+          "oklch(0.45 0.11 70)",
+          "oklch(0.55 0.14 70)",
+          "oklch(0.65 0.16 70)",
+          "oklch(0.769 0.165 70)",
+          "oklch(0.88 0.10 80)",
+          "oklch(0.97 0.03 90)"
+        ]
+      },
+      "primary-foreground": {
+        "role": "primary",
+        "displayName": "Amber Ink",
+        "canonical": "oklch(0.21 0.03 71)"
+      },
+      "accent": {
+        "role": "secondary",
+        "displayName": "Pale Amber",
+        "canonical": "oklch(0.962 0.03 90)"
+      },
+      "accent-foreground": {
+        "role": "secondary",
+        "displayName": "Burnt Amber",
+        "canonical": "oklch(0.42 0.09 65)"
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "oklch(0.145 0 0)",
+        "tonalRamp": [
+          "oklch(0.145 0 0)",
+          "oklch(0.27 0 0)",
+          "oklch(0.40 0 0)",
+          "oklch(0.49 0 0)",
+          "oklch(0.62 0 0)",
+          "oklch(0.75 0 0)",
+          "oklch(0.922 0 0)",
+          "oklch(0.985 0 0)"
+        ]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "oklch(0.49 0 0)"
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "oklch(1 0 0)"
+      },
+      "destructive": {
+        "role": "neutral",
+        "displayName": "Alert Red",
+        "canonical": "oklch(0.577 0.245 27.325)"
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "One-per-screen page title." },
+      "headline": { "displayName": "Headline", "purpose": "Section and modal/sheet titles." },
+      "title": { "displayName": "Title", "purpose": "Card titles and form-group headings." },
+      "body": { "displayName": "Body", "purpose": "Default app reading size; prose caps at 65-75ch." },
+      "label": { "displayName": "Label", "purpose": "Field labels, table headers, badges, metadata." },
+      "mono": { "displayName": "Mono", "purpose": "Machine identifiers: clearance numbers, reference IDs, QR payloads." }
+    },
+    "shadows": [
+      { "name": "card-rest", "value": "0 4px 12px -2px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06)", "purpose": "Default soft ambient lift for cards, paired with a hairline ring." },
+      { "name": "overlay", "value": "0 12px 32px -8px rgba(0,0,0,0.18)", "purpose": "Transient surfaces: popovers, dropdowns, dialogs." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Ease-out for state transitions and reveals." },
+      { "name": "duration-default", "value": "180ms", "purpose": "Most UI transitions; users are in a task, keep it quick." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single most important action on a view. Amber fill, dark amber ink, pill shape.",
+      "html": "<button class=\"ds-btn-primary\">Request document</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 2.25rem; padding: 0 1rem; border: none; border-radius: 1.625rem; background: var(--primary); color: var(--primary-foreground); font-family: var(--font-sans), system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 180ms cubic-bezier(0.22,1,0.36,1), transform 180ms cubic-bezier(0.22,1,0.36,1); } .ds-btn-primary:hover { background: oklch(0.72 0.16 70.08); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 30%, transparent); } .ds-btn-primary:active { transform: translateY(1px); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action. White fill, hairline border, ink label.",
+      "html": "<button class=\"ds-btn-outline\">Cancel</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 2.25rem; padding: 0 1rem; border: 1px solid var(--border); border-radius: 1.625rem; background: var(--background); color: var(--foreground); font-family: var(--font-sans), system-ui, sans-serif; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 180ms cubic-bezier(0.22,1,0.36,1); } .ds-btn-outline:hover { background: var(--muted); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in oklch, var(--primary) 30%, transparent); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Borderless tinted field at rest; wakes to an amber ring on focus.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"juan.delacruz@email.com\" />",
+      "css": ".ds-input { width: 100%; height: 2.25rem; padding: 0.25rem 0.75rem; border: 1px solid transparent; border-radius: 1.375rem; background: color-mix(in oklch, var(--input) 50%, transparent); color: var(--foreground); font-family: var(--font-sans), system-ui, sans-serif; font-size: 1rem; transition: border-color 180ms, box-shadow 180ms, background 180ms; } .ds-input::placeholder { color: var(--muted-foreground); } .ds-input:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 30%, transparent); } @media (min-width: 768px) { .ds-input { font-size: 0.875rem; } }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Discrete record panel. Soft ambient shadow plus a hairline ring; generous rounding.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Barangay Clearance</div><div class=\"ds-card-desc\">Ready for pickup or download.</div><div class=\"ds-card-id\">REF-2026-00482</div></div>",
+      "css": ".ds-card { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.5rem; border-radius: 1.625rem; background: var(--card); color: var(--foreground); box-shadow: 0 4px 12px -2px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06), 0 0 0 1px color-mix(in oklch, var(--foreground) 5%, transparent); font-family: var(--font-sans), system-ui, sans-serif; } .ds-card-title { font-size: 1.125rem; font-weight: 600; } .ds-card-desc { font-size: 0.875rem; color: var(--muted-foreground); } .ds-card-id { margin-top: 0.25rem; font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.8125rem; color: var(--muted-foreground); letter-spacing: 0.01em; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-status",
+      "description": "Verification / document state. Color always paired with a label and icon; never color alone.",
+      "html": "<span class=\"ds-badge ds-badge--pending\"><svg viewBox=\"0 0 24 24\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 2\"/></svg>Pending review</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 0.375rem; height: 1.5rem; padding: 0 0.625rem; border-radius: 1.625rem; font-family: var(--font-sans), system-ui, sans-serif; font-size: 0.75rem; font-weight: 500; letter-spacing: 0.01em; } .ds-badge--pending { background: oklch(0.962 0.03 90); color: oklch(0.42 0.09 65); } .ds-badge--verified { background: oklch(0.95 0.05 150); color: oklch(0.40 0.10 150); } .ds-badge--rejected { background: color-mix(in oklch, var(--destructive) 12%, transparent); color: var(--destructive); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Barangay Hall, Modernized",
+    "overview": "Nexora is the trusted public counter, moved onto a phone. The feeling to chase is the one a resident has when a clerk who knows their name slides a finished clearance across the desk: calm, credible, handled. It serves the resident who registers and requests and the official who verifies and issues from one vocabulary, reading as legitimate to both without intimidating either. The surface is clean white like an official form; warmth comes from a single amber that works like a stamp, marking what is actionable and current, used sparingly so it always means something. Type is IBM Plex Sans with IBM Plex Mono for the machine identifiers this product runs on. Shapes are softly rounded to stay approachable; dark ink and restraint keep that softness from tipping into toy.",
+    "keyCharacteristics": [
+      "Pure-white surfaces; amber carries the brand, never the background.",
+      "One type family for the whole UI; mono only for identifiers.",
+      "Soft rounding (26px cards, pill buttons) balanced by dark ink and restraint.",
+      "Flat by default; depth is a soft ambient shadow on cards, nothing more.",
+      "Built bilingual (EN / Filipino) and mobile-first; layouts tolerate longer strings and small screens."
+    ],
+    "rules": [
+      { "name": "The Amber-for-Action Rule", "body": "Amber marks what the user can do or what is currently true: primary action, current selection, focus, key status. If amber appears on something that is not actionable or stateful, it is wrong. Target <=10% amber coverage on any screen.", "section": "colors" },
+      { "name": "The Dark-Ink-on-Amber Rule", "body": "Text and icons on any amber fill are always Amber Ink (oklch(0.21 0.03 71)) or black, never white. White on amber fails contrast and reads cheap.", "section": "colors" },
+      { "name": "The One Voice Rule", "body": "IBM Plex Sans carries headings, buttons, labels, body, and data. No second display face. Hierarchy comes from size and weight, not from new families.", "section": "typography" },
+      { "name": "The Identifier Rule", "body": "If a string is a machine-issued identifier a resident or official will read back, copy, or verify, set it in IBM Plex Mono. Human language stays in Plex Sans.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. A card gets one soft ambient shadow plus a hairline ring and nothing else lifts. If a 2014-app drop shadow appears (dark, tight, offset), it is too heavy.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep backgrounds pure white (oklch(1 0 0)); let Service Amber and type carry the brand.",
+      "Do reserve Service Amber for action and state, <=10% of any screen.",
+      "Do put Amber Ink or black on amber fills, never white.",
+      "Do set machine identifiers in IBM Plex Mono.",
+      "Do ship every interactive component with default, hover, focus, active, disabled, loading, and error states.",
+      "Do pair every status color with a label and icon; never rely on color alone.",
+      "Do design mobile-first with >=44px tap targets on resident flows, and leave room for longer Filipino strings.",
+      "Do give loading states skeletons that mirror the content, not a centered spinner."
+    ],
+    "donts": [
+      "Don't rebuild the dated government portal: dense link walls, clashing color, sub-14px body, broken layouts.",
+      "Don't drift into the generic SaaS dashboard: purple gradients, the hero-metric template, or walls of identical icon-heading-text cards.",
+      "Don't go childish / toy-like: no cartoon-bright fills, no rounding so soft it reads as a toy.",
+      "Don't go cold and intimidating: no sterile enterprise-bank chrome; keep copy plain and human.",
+      "Don't use border-left / border-right greater than 1px as a colored accent stripe.",
+      "Don't use gradient text or decorative glassmorphism.",
+      "Don't lighten Muted Ink back toward the shadcn default; it must clear 4.5:1 on white.",
+      "Don't nest cards, or lift surfaces with heavy 2014-style drop shadows.",
+      "Don't introduce a second type family or a display font in UI labels, buttons, or data."
+    ]
+  }
+}
