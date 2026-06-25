@@ -102,7 +102,7 @@ export function VerifyEmailForm() {
             Email verified
           </h1>
           <p className="text-sm text-muted-foreground text-pretty">
-            Your account is active. Taking you to Nexora now.
+            Your account is active. Taking you to Barangay Libtangin now.
           </p>
         </div>
         <Button asChild size="lg" className="w-fit">

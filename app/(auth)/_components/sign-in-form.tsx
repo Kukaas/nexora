@@ -127,10 +127,10 @@ export function SignInForm() {
     <div>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-balance">
-          Sign in to Nexora
+          Sign in to your account
         </h1>
         <p className="text-sm text-muted-foreground text-pretty">
-          Welcome back. Sign in to manage your barangay requests.
+          Welcome back. Manage your Barangay Libtangin requests and documents.
         </p>
       </div>
 
@@ -286,7 +286,7 @@ export function SignInForm() {
       </Button>
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
-        New to Nexora?{" "}
+        New to Barangay Libtangin online?{" "}
         <Link
           href="/sign-up"
           className={cn(

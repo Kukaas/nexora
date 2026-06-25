@@ -5,8 +5,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { VerifyEmailForm } from "../_components/verify-email-form";
 
 export const metadata: Metadata = {
-  title: "Nexora - Verify Email",
-  description: "Confirming your Nexora email address.",
+  title: "Verify your email · Barangay Libtangin",
+  description: "Confirming your email address for Barangay Libtangin on Nexora.",
 };
 
 export default function VerifyEmailPage() {

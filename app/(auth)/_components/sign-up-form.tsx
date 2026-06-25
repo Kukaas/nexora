@@ -153,10 +153,10 @@ export function SignUpForm() {
     <div>
       <div className="flex flex-col gap-2">
         <h1 className="text-2xl font-semibold tracking-tight text-balance">
-          Create your Nexora account
+          Create your account
         </h1>
         <p className="text-sm text-muted-foreground text-pretty">
-          Register with your email to request and track barangay documents.
+          Register with your email to request documents from Barangay Libtangin.
         </p>
       </div>
 

@@ -5,8 +5,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { ResetPasswordForm } from "../_components/reset-password-form";
 
 export const metadata: Metadata = {
-  title: "Nexora - Set New Password",
-  description: "Choose a new password for your Nexora account.",
+  title: "Set a new password · Barangay Libtangin",
+  description: "Choose a new password for your Barangay Libtangin account.",
 };
 
 export default function ResetPasswordPage() {

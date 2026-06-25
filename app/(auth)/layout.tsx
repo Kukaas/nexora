@@ -18,7 +18,7 @@ const TRUST_POINTS = [
   {
     icon: Users,
     title: "One account, every role",
-    body: "Built for residents and for barangay officials who serve them.",
+    body: "Built for the residents and officials of Barangay Libtangin.",
   },
 ];
 
@@ -43,18 +43,25 @@ export default function AuthLayout({
 
         <Link
           href="/"
-          className="relative z-10 w-fit rounded-3xl outline-none focus-visible:ring-3 focus-visible:ring-primary/40"
+          className="relative z-10 flex w-fit items-center gap-3 rounded-3xl outline-none focus-visible:ring-3 focus-visible:ring-primary/40"
         >
           <NexoraMark wordClassName="text-2xl" />
+          <span aria-hidden className="h-6 w-px bg-white/15" />
+          <span className="text-sm leading-tight text-[oklch(0.78_0.012_80)]">
+            for Barangay
+            <span className="block font-medium text-[oklch(0.97_0.008_80)]">
+              Libtangin
+            </span>
+          </span>
         </Link>
 
         <div className="relative z-10 mt-auto max-w-md">
           <h2 className="text-balance text-4xl font-semibold leading-[1.1] tracking-tight">
-            Your barangay, online.
+            Barangay Libtangin, online.
           </h2>
           <p className="mt-5 max-w-sm text-pretty text-[oklch(0.82_0.012_80)]">
-            Register once, then request clearances and certificates, track each
-            one, and pick them up or download them when they&apos;re ready.
+            Register once, then request clearances and certificates from the
+            barangay, track each one, and download them when they&apos;re ready.
           </p>
 
           <ul className="mt-10 flex flex-col gap-6">
@@ -75,7 +82,7 @@ export default function AuthLayout({
         </div>
 
         <p className="relative z-10 mt-auto pt-14 text-sm text-[oklch(0.68_0.01_80)]">
-          A digital barangay services platform.
+          Barangay Libtangin, Gasan, Marinduque. Powered by Nexora.
         </p>
       </aside>
 
@@ -85,9 +92,16 @@ export default function AuthLayout({
         <header className="lg:hidden">
           <Link
             href="/"
-            className="inline-flex w-fit rounded-3xl outline-none focus-visible:ring-3 focus-visible:ring-primary/40"
+            className="inline-flex w-fit items-center gap-2.5 rounded-3xl outline-none focus-visible:ring-3 focus-visible:ring-primary/40"
           >
             <NexoraMark />
+            <span aria-hidden className="h-5 w-px bg-border" />
+            <span className="text-sm leading-tight text-muted-foreground">
+              for Barangay
+              <span className="block font-medium text-foreground">
+                Libtangin
+              </span>
+            </span>
           </Link>
         </header>
 
