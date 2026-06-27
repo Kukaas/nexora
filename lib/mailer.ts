@@ -88,6 +88,71 @@ export async function sendVerificationEmail(to: string, url: string) {
 }
 
 /**
+ * Welcome email for an official account an admin just created. Unlike the
+ * resident verification email, this one carries the temporary password the admin
+ * generated, so the official has everything they need in one place: confirm the
+ * email, then sign in with the temporary password (they're asked to choose their
+ * own right after). The password is shown in plain text on purpose — it's
+ * single-use-ish and they replace it on first sign-in.
+ */
+export async function sendOfficialWelcomeEmail(
+  to: string,
+  options: { name: string; roleLabel: string; tempPassword: string; verifyUrl: string },
+) {
+  const { name, roleLabel, tempPassword, verifyUrl } = options;
+  const firstName = name.trim().split(/\s+/)[0] || "there";
+
+  const html = `
+    <div style="font-family: 'IBM Plex Sans', system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px; color: #1a1a1a;">
+      <h1 style="font-size: 20px; margin: 0 0 16px;">Welcome to Nexora, ${firstName}</h1>
+      <p style="font-size: 14px; line-height: 1.6; margin: 0 0 20px; color: #3d3d3d;">
+        An administrator created a <strong>${roleLabel}</strong> account for you at
+        Barangay Libtangin. Here's how to get in:
+      </p>
+
+      <p style="font-size: 13px; font-weight: 600; margin: 0 0 6px; color: #1a1a1a;">
+        1. Confirm your email
+      </p>
+      <a href="${verifyUrl}"
+         style="display: inline-block; background: #f59e0b; color: #3a2a00; text-decoration: none; font-size: 14px; font-weight: 600; padding: 12px 24px; border-radius: 26px; margin: 0 0 20px;">
+        Confirm email
+      </a>
+
+      <p style="font-size: 13px; font-weight: 600; margin: 0 0 6px; color: #1a1a1a;">
+        2. Sign in with this temporary password
+      </p>
+      <div style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; font-weight: 600; letter-spacing: 0.04em; background: #f4f4f5; border-radius: 12px; padding: 12px 16px; margin: 0 0 8px; color: #1a1a1a;">
+        ${tempPassword}
+      </div>
+      <p style="font-size: 13px; line-height: 1.6; margin: 0 0 20px; color: #6b6b6b;">
+        You'll be asked to set your own password right after your first sign-in,
+        so this one stops working once you do.
+      </p>
+
+      <p style="font-size: 12px; color: #6b6b6b; line-height: 1.6; margin: 0;">
+        If the button doesn't work, copy and paste this link into your browser:<br />
+        <a href="${verifyUrl}" style="color: #a15c00; word-break: break-all;">${verifyUrl}</a>
+      </p>
+      <p style="font-size: 12px; color: #6b6b6b; margin: 16px 0 0;">
+        If you weren't expecting this, you can ignore this email or contact the
+        barangay office.
+      </p>
+    </div>
+  `;
+
+  await sendMail({
+    to,
+    subject: "Your Nexora official account",
+    html,
+    text:
+      `An administrator created a ${roleLabel} account for you at Barangay Libtangin.\n\n` +
+      `1. Confirm your email: ${verifyUrl}\n` +
+      `2. Sign in with this temporary password: ${tempPassword}\n\n` +
+      `You'll set your own password right after your first sign-in.`,
+  });
+}
+
+/**
  * Password-reset email. Triggered by Better Auth's `sendResetPassword` when a
  * resident requests a reset from the forgot-password page. The link is
  * single-use and expires; the copy says so in plain language.

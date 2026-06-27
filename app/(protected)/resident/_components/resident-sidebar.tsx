@@ -167,12 +167,6 @@ export function ResidentSidebar({ user }: { user: ResidentUser }) {
                 <span className="truncate text-sm font-medium">
                   {user.name}
                 </span>
-                <Badge
-                  variant="secondary"
-                  className="mt-0.5 w-fit bg-emerald-50 px-1.5 text-[0.6875rem] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                >
-                  Verified resident
-                </Badge>
               </div>
             </div>
           </SidebarMenuItem>

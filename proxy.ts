@@ -11,7 +11,19 @@ import { getSessionCookie } from "better-auth/cookies";
  */
 export function proxy(request: NextRequest) {
   const hasSession = getSessionCookie(request);
-  if (hasSession) return NextResponse.next();
+  if (hasSession) {
+    const response = NextResponse.next();
+    // Keep protected pages out of the browser's back/forward cache. Without
+    // this, hitting "Back" after signing out — or after being bounced from a
+    // role area — can restore a cached protected page from memory without ever
+    // re-hitting the server, so the per-role guards in the layouts never run.
+    // `no-store` forces a fresh request on Back, which re-runs those guards.
+    response.headers.set(
+      "Cache-Control",
+      "no-store, max-age=0, must-revalidate",
+    );
+    return response;
+  }
 
   const { pathname, search } = request.nextUrl;
   const signIn = new URL("/sign-in", request.url);
@@ -29,6 +41,7 @@ export const config = {
     "/treasurer/:path*",
     "/kagawad/:path*",
     "/setup",
+    "/change-password",
     "/start",
   ],
 };
