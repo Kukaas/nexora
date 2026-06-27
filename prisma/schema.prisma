@@ -20,6 +20,7 @@ model User {
   middleName              String?           @map("middle_name")
   lastName                String?           @map("last_name")
   email                   String
+  image                   String?           
 
   emailVerified           Boolean           @default(false) @map("email_verified")
   createdAt               DateTime          @default(now()) @map("created_at")

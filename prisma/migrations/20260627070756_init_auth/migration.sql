@@ -12,6 +12,7 @@ CREATE TABLE "user" (
     "middle_name" TEXT,
     "last_name" TEXT,
     "email" TEXT NOT NULL,
+    "image" TEXT,
     "email_verified" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,8 +34,23 @@ const signInSchema = z.object({
 
 type SignInValues = z.infer<typeof signInSchema>;
 
+/**
+ * Friendly copy for the `?error=` codes Better Auth can append when a Google
+ * sign-in is bounced back here (see `errorCallbackURL` below). The important
+ * one is `account_not_linked`: it means the email already belongs to an
+ * email+password account, so Google can't be used for it.
+ */
+function messageForOAuthError(code: string | null): string | null {
+  if (!code) return null;
+  if (code === "account_not_linked") {
+    return "This email is already registered with a password. Sign in with your email and password below instead of Google.";
+  }
+  return "We couldn't sign you in with Google. Please try again, or use your email and password.";
+}
+
 export function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const emailId = useId();
   const passwordId = useId();
 
@@ -55,6 +70,12 @@ export function SignInForm() {
     resolver: zodResolver(signInSchema),
     defaultValues: { email: "", password: "" },
   });
+
+  // Surface a Google sign-in failure that redirected back here with `?error=`.
+  useEffect(() => {
+    const message = messageForOAuthError(searchParams.get("error"));
+    if (message) setFormError(message);
+  }, [searchParams]);
 
   // Move focus to the alert when an auth-level problem appears, so screen-reader
   // and keyboard users land on the explanation instead of hunting for it.
@@ -113,6 +134,10 @@ export function SignInForm() {
     const { error } = await authClient.signIn.social({
       provider: "google",
       callbackURL: "/",
+      // If Google's email collides with an existing password account, Better
+      // Auth bounces back here with `?error=account_not_linked` instead of
+      // signing in; the effect above turns that into a readable message.
+      errorCallbackURL: "/sign-in",
     });
     // On success the browser redirects to Google, so we only reach here on error.
     if (error) {

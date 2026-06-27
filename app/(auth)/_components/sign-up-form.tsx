@@ -98,6 +98,9 @@ export function SignUpForm() {
     const { error } = await authClient.signIn.social({
       provider: "google",
       callbackURL: "/",
+      // If this Google email already has a password account, send them to
+      // sign-in, where the message explains to use email and password instead.
+      errorCallbackURL: "/sign-in",
     });
     if (error) {
       setIsGoogleLoading(false);
