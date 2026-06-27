@@ -25,6 +25,14 @@ export const auth = betterAuth({
     provider: "postgresql",
   }),
   ...(googleProvider ? { socialProviders: googleProvider } : {}),
+  user: {
+    additionalFields: {
+      roles: {
+        type: "string[]",
+        input: false,
+      },
+    },
+  },
   account: {
     accountLinking: {
       enabled: false,

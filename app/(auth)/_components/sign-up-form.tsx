@@ -97,7 +97,8 @@ export function SignUpForm() {
     setIsGoogleLoading(true);
     const { error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
+      // /start resolves the user's role and forwards them to their home.
+      callbackURL: "/start",
       // If this Google email already has a password account, send them to
       // sign-in, where the message explains to use email and password instead.
       errorCallbackURL: "/sign-in",

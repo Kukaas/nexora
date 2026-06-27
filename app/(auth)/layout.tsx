@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ShieldCheck, ListChecks, Users } from "lucide-react";
 
 import { Toaster } from "@/components/ui/sonner";
+import { getSession } from "@/lib/session";
 import { NexoraGlyph, NexoraMark } from "./_components/nexora-mark";
 
 const TRUST_POINTS = [
@@ -22,9 +24,12 @@ const TRUST_POINTS = [
   },
 ];
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Already signed in? Don't show sign-in/up — send them to their home.
+  if (await getSession()) redirect("/start");
+
   return (
     <>
     <div className="grid min-h-svh content-stretch lg:grid-cols-[1.05fr_1fr]">

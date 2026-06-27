@@ -48,6 +48,17 @@ function messageForOAuthError(code: string | null): string | null {
   return "We couldn't sign you in with Google. Please try again, or use your email and password.";
 }
 
+/**
+ * Only allow redirecting back to an in-app path. Rejects absolute URLs and
+ * protocol-relative `//host` values so a crafted `?redirect=` can't bounce the
+ * user off-site after sign-in.
+ */
+function safeRedirect(target: string | null): string | null {
+  if (!target) return null;
+  if (!target.startsWith("/") || target.startsWith("//")) return null;
+  return target;
+}
+
 export function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -107,7 +118,7 @@ export function SignInForm() {
       return;
     }
 
-    router.push("/");
+    router.push(safeRedirect(searchParams.get("redirect")) ?? "/start");
     router.refresh();
   };
 
@@ -133,7 +144,8 @@ export function SignInForm() {
     setIsGoogleLoading(true);
     const { error } = await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
+      // /start resolves the user's role and forwards them to their home.
+      callbackURL: "/start",
       // If Google's email collides with an existing password account, Better
       // Auth bounces back here with `?error=account_not_linked` instead of
       // signing in; the effect above turns that into a readable message.
