@@ -23,6 +23,7 @@ model User {
   birthDate               DateTime?         @map("birth_date")
   mobileNumber            String?           @map("mobile_number")
   profileCompletedAt      DateTime?         @map("profile_completed_at")
+  mustChangePassword      Boolean           @default(false) @map("must_change_password")
 
   emailVerified           Boolean           @default(false) @map("email_verified")
   createdAt               DateTime          @default(now()) @map("created_at")

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireSession } from "@/lib/session";
 import { resolveHomePath } from "@/lib/roles";
-import { isProfileComplete } from "@/lib/profile";
+import { isProfileComplete, mustChangePassword } from "@/lib/profile";
 import type { UserRoles } from "@/app/generated/prisma/enums";
 
 /**
@@ -13,6 +13,13 @@ import type { UserRoles } from "@/app/generated/prisma/enums";
  */
 export default async function StartPage() {
   const session = await requireSession();
+
+  // An admin-created official signing in with their temporary password must set
+  // their own before they reach any role area.
+  if (await mustChangePassword(session.user.id)) {
+    redirect("/change-password");
+  }
+
   const roles = session.user.roles as UserRoles[] | undefined;
   const home = resolveHomePath(roles);
 
