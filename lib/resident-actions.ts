@@ -1,10 +1,12 @@
 "use server";
 
 import { headers } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { deleteCloudinaryImage } from "@/lib/cloudinary";
 import { IDType } from "@/app/generated/prisma/enums";
 
 const ID_TYPE_VALUES = Object.values(IDType) as [IDType, ...IDType[]];
@@ -115,4 +117,85 @@ export async function completeResidentSetup(
     console.error("completeResidentSetup failed", error);
     return { ok: false, error: "Something went wrong saving your details. Please try again." };
   }
+}
+
+const resubmitIdSchema = z.object({
+  idType: z.enum(ID_TYPE_VALUES, { message: "Choose your ID type." }),
+  idNumber: z.string().trim().min(1, "Enter your ID number.").max(60),
+  idImage: z.string().url("Upload a photo of your ID."),
+});
+
+export type ResubmitIdInput = z.input<typeof resubmitIdSchema>;
+export type ResubmitIdResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Replace the ID a resident submitted, sending them back into review. Used when
+ * an official rejected the previous one. We delete the old ID record(s) and
+ * upload, then create a fresh ID that defaults to PENDING — so the resident is
+ * no longer verified and an official reviews the new submission. Removing the
+ * old row also frees the unique [type, number] slot in case they reuse it.
+ */
+export async function resubmitResidentId(
+  input: ResubmitIdInput,
+): Promise<ResubmitIdResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { ok: false, error: "Your session expired. Sign in again." };
+
+  const parsed = resubmitIdSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Check your details and try again.",
+    };
+  }
+  const data = parsed.data;
+
+  // The IDs we're replacing — kept so we can delete their uploaded photos after
+  // the swap succeeds.
+  const oldIds = await prisma.iD.findMany({
+    where: { userId: session.user.id },
+    select: { image: true },
+  });
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.iD.deleteMany({ where: { userId: session.user.id } });
+      await tx.iD.create({
+        data: {
+          type: data.idType,
+          number: data.idNumber,
+          image: data.idImage,
+          userId: session.user.id,
+        },
+      });
+    });
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
+      return {
+        ok: false,
+        error: "That ID is already registered. Use a different ID or contact the barangay.",
+      };
+    }
+    console.error("resubmitResidentId failed", error);
+    return { ok: false, error: "Something went wrong saving your ID. Please try again." };
+  }
+
+  // Best-effort cleanup of the old photos now that the new one is saved.
+  for (const old of oldIds) {
+    if (old.image && old.image !== data.idImage) {
+      await deleteCloudinaryImage(old.image);
+    }
+  }
+
+  revalidatePath(`/resident/${session.user.id}`);
+  revalidatePath("/admin");
+  revalidatePath("/admin/residents");
+  revalidatePath("/admin/activity");
+
+  return { ok: true };
 }

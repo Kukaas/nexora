@@ -17,6 +17,10 @@ import {
   AccountStatusBadge,
   type AccountStatus,
 } from "./account-status-badge";
+import {
+  ResidentReviewDialog,
+  type SubmittedId,
+} from "./resident-review-dialog";
 import { formatDate, initialsOf } from "../_data";
 
 export type ResidentRow = {
@@ -26,6 +30,8 @@ export type ResidentRow = {
   mobileNumber: string | null;
   status: AccountStatus;
   joined: string;
+  /** The ID they submitted at setup, or null if they haven't reached that step. */
+  submittedId: SubmittedId | null;
 };
 
 export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
@@ -75,15 +81,18 @@ export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
                 <TableHead className="pl-5">Resident</TableHead>
                 <TableHead className="hidden md:table-cell">Mobile</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="hidden pr-5 text-right sm:table-cell">
+                <TableHead className="hidden text-right sm:table-cell">
                   Joined
+                </TableHead>
+                <TableHead className="pr-5 text-right">
+                  <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="py-14">
+                  <TableCell colSpan={5} className="py-14">
                     <div className="flex flex-col items-center gap-2 text-center">
                       <span className="flex size-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
                         <UsersRound className="size-5" aria-hidden />
@@ -127,8 +136,21 @@ export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
                     <TableCell>
                       <AccountStatusBadge status={r.status} />
                     </TableCell>
-                    <TableCell className="hidden pr-5 text-right text-sm text-muted-foreground tabular-nums sm:table-cell">
+                    <TableCell className="hidden text-right text-sm text-muted-foreground tabular-nums sm:table-cell">
                       {formatDate(r.joined)}
+                    </TableCell>
+                    <TableCell className="pr-5 text-right">
+                      {r.submittedId && (
+                        <ResidentReviewDialog
+                          resident={{
+                            id: r.id,
+                            name: r.name,
+                            email: r.email,
+                            status: r.status,
+                            submittedId: r.submittedId,
+                          }}
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

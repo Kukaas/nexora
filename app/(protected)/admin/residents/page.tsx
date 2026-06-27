@@ -27,18 +27,34 @@ export default async function ResidentsPage() {
       emailVerified: true,
       profileCompletedAt: true,
       createdAt: true,
+      // The ID under review (most recent), for the status badge + review dialog.
+      ids: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { type: true, number: true, image: true, status: true },
+      },
     },
   });
 
-  const rows: ResidentRow[] = residents.map((r) => ({
-    id: r.id,
-    name: displayName(r),
-    email: r.email,
-    mobileNumber: r.mobileNumber,
-    status: residentStatus(r),
-    // Serialize the Date for the client component.
-    joined: r.createdAt.toISOString(),
-  }));
+  const rows: ResidentRow[] = residents.map((r) => {
+    const submittedId = r.ids[0] ?? null;
+    return {
+      id: r.id,
+      name: displayName(r),
+      email: r.email,
+      mobileNumber: r.mobileNumber,
+      status: residentStatus({ ...r, idStatus: submittedId?.status ?? null }),
+      // Serialize the Date for the client component.
+      joined: r.createdAt.toISOString(),
+      submittedId: submittedId
+        ? {
+            type: submittedId.type,
+            number: submittedId.number,
+            image: submittedId.image,
+          }
+        : null,
+    };
+  });
 
   return (
     <div className="space-y-6">

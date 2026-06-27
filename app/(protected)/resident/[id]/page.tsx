@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Clock, FilePlus2, MapPin, Phone, ShieldCheck } from "lucide-react";
+import {
+  Clock,
+  FilePlus2,
+  MapPin,
+  Phone,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldQuestion,
+} from "lucide-react";
 
 import {
   Card,
@@ -11,6 +20,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getSession } from "@/lib/session";
+import { getResidencyStatus, type ResidencyStatus } from "@/lib/profile";
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
 import { AnnouncementsFeed } from "../_components/announcements-feed";
 import { ComingSoonButton } from "../_components/coming-soon-button";
 import { QuickActions } from "../_components/quick-actions";
@@ -38,6 +51,12 @@ export default async function ResidentPage({
   const firstName =
     user.firstName?.trim() || user.name?.trim()?.split(" ")[0] || "kabayan";
 
+  // Residents can only transact once an official has approved the ID they
+  // submitted at setup. Until then we show a review notice instead of the
+  // request tools, so a pending (or rejected) resident can't request anything.
+  const residency = await getResidencyStatus(session.user.id);
+  const verified = residency === "approved";
+
   return (
     <div className="space-y-6 lg:space-y-8">
       <header>
@@ -53,75 +72,74 @@ export default async function ResidentPage({
             aria-hidden
             className="hidden h-1 w-1 rounded-full bg-border sm:inline-block"
           />
-          <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
-            <ShieldCheck className="size-4" aria-hidden />
-            Verified resident
-          </span>
+          <ResidencyBadge status={residency} />
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-8 lg:space-y-10">
-          <QuickActions />
+          {verified ? <QuickActions /> : <ReviewNotice status={residency} />}
           <AnnouncementsFeed />
         </div>
 
         <aside className="space-y-6">
-          <section id="my-requests" className="scroll-mt-20">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between gap-2">
-                  My requests
-                  <ComingSoonButton
-                    feature="Request history"
-                    variant="ghost"
-                    size="sm"
-                    className="-mr-1.5 text-muted-foreground"
-                  >
-                    View all
-                  </ComingSoonButton>
-                </CardTitle>
-                <CardDescription>
-                  Documents you&apos;ve requested and where they stand.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="-my-1 divide-y divide-border">
-                  {MY_REQUESTS.map((req) => (
-                    <li
-                      key={req.id}
-                      className="flex items-start justify-between gap-3 py-3.5"
+          {verified && (
+            <section id="my-requests" className="scroll-mt-20">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between gap-2">
+                    My requests
+                    <ComingSoonButton
+                      feature="Request history"
+                      variant="ghost"
+                      size="sm"
+                      className="-mr-1.5 text-muted-foreground"
                     >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">
-                          {req.document}
-                        </p>
-                        <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                          {req.reference}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <StatusBadge status={req.status} />
-                        <span className="text-[0.6875rem] text-muted-foreground tabular-nums">
-                          Updated {formatShortDate(req.updatedAt)}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <ComingSoonButton
-                  feature="Document requests"
-                  className="w-full"
-                  size="lg"
-                >
-                  <FilePlus2 />
-                  Request a document
-                </ComingSoonButton>
-              </CardFooter>
-            </Card>
-          </section>
+                      View all
+                    </ComingSoonButton>
+                  </CardTitle>
+                  <CardDescription>
+                    Documents you&apos;ve requested and where they stand.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ul className="-my-1 divide-y divide-border">
+                    {MY_REQUESTS.map((req) => (
+                      <li
+                        key={req.id}
+                        className="flex items-start justify-between gap-3 py-3.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {req.document}
+                          </p>
+                          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                            {req.reference}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <StatusBadge status={req.status} />
+                          <span className="text-[0.6875rem] text-muted-foreground tabular-nums">
+                            Updated {formatShortDate(req.updatedAt)}
+                          </span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <ComingSoonButton
+                    feature="Document requests"
+                    className="w-full"
+                    size="lg"
+                  >
+                    <FilePlus2 />
+                    Request a document
+                  </ComingSoonButton>
+                </CardFooter>
+              </Card>
+            </section>
+          )}
 
           <Card>
             <CardHeader>
@@ -178,5 +196,136 @@ export default async function ResidentPage({
         </aside>
       </div>
     </div>
+  );
+}
+
+/** The residency-verification chip shown next to the date in the greeting. */
+function ResidencyBadge({ status }: { status: ResidencyStatus }) {
+  if (status === "approved") {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-400">
+        <ShieldCheck className="size-4" aria-hidden />
+        Verified resident
+      </span>
+    );
+  }
+  if (status === "rejected") {
+    return (
+      <span className="inline-flex items-center gap-1.5 font-medium text-destructive">
+        <ShieldAlert className="size-4" aria-hidden />
+        Verification needs attention
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 font-medium text-accent-foreground">
+      <ShieldQuestion className="size-4" aria-hidden />
+      Verification pending
+    </span>
+  );
+}
+
+/**
+ * Shown in place of the request tools while a resident isn't verified. They
+ * can't request documents until an official approves the ID they submitted.
+ */
+function ReviewNotice({ status }: { status: ResidencyStatus }) {
+  const rejected = status === "rejected";
+  return (
+    <section aria-labelledby="review-heading">
+      <Card>
+        <CardHeader>
+          <span
+            className={
+              rejected
+                ? "flex size-11 items-center justify-center rounded-2xl bg-destructive/10 text-destructive"
+                : "flex size-11 items-center justify-center rounded-2xl bg-accent text-accent-foreground"
+            }
+          >
+            {rejected ? (
+              <ShieldAlert className="size-5.5" aria-hidden />
+            ) : (
+              <Clock className="size-5.5" aria-hidden />
+            )}
+          </span>
+          <CardTitle id="review-heading" className="mt-3 text-xl">
+            {rejected
+              ? "We couldn't verify your ID"
+              : "Your account is under review"}
+          </CardTitle>
+          <CardDescription className="text-pretty">
+            {rejected ? (
+              <>
+                The ID you submitted couldn&apos;t be verified. Please visit the
+                Barangay Libtangin hall or call the hotline below so we can sort
+                it out and you can resubmit.
+              </>
+            ) : (
+              <>
+                An official is verifying the ID you submitted. You&apos;ll be able
+                to request documents and use the rest of the portal as soon as
+                it&apos;s approved — no need to do anything else for now.
+              </>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ol className="space-y-3 text-sm">
+            {[
+              { label: "Account created", done: true },
+              { label: "ID submitted", done: true },
+              {
+                label: rejected ? "Verification rejected" : "Official review",
+                done: false,
+                current: true,
+                bad: rejected,
+              },
+              { label: "Request documents", done: false },
+            ].map((step) => (
+              <li key={step.label} className="flex items-center gap-3">
+                <span
+                  className={
+                    step.done
+                      ? "flex size-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                      : step.bad
+                        ? "flex size-6 items-center justify-center rounded-full bg-destructive/10 text-destructive"
+                        : step.current
+                          ? "flex size-6 items-center justify-center rounded-full bg-accent text-accent-foreground"
+                          : "flex size-6 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                  }
+                >
+                  {step.done ? (
+                    <ShieldCheck className="size-3.5" aria-hidden />
+                  ) : step.bad ? (
+                    <ShieldAlert className="size-3.5" aria-hidden />
+                  ) : (
+                    <Clock className="size-3.5" aria-hidden />
+                  )}
+                </span>
+                <span
+                  className={
+                    step.done || step.current
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground"
+                  }
+                >
+                  {step.label}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </CardContent>
+        {rejected && (
+          <CardFooter>
+            <Button asChild>
+              <Link href="/resident/resubmit">
+                <RefreshCw />
+                Resubmit ID
+              </Link>
+            </Button>
+          </CardFooter>
+        )}
+      </Card>
+    </section>
   );
 }

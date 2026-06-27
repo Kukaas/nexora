@@ -10,7 +10,7 @@ import { createEmailVerificationToken } from "better-auth/api";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendOfficialWelcomeEmail } from "@/lib/mailer";
-import { UserRoles } from "@/app/generated/prisma/enums";
+import { IDStatus, UserRoles } from "@/app/generated/prisma/enums";
 
 /** Roles an admin can assign when creating an official account. */
 const ASSIGNABLE_ROLES = [
@@ -210,4 +210,52 @@ export async function createOfficial(
   revalidatePath("/admin/activity");
 
   return { ok: true, email, name, tempPassword, emailSent };
+}
+
+export type ReviewResidentResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Approve or reject the ID a resident submitted at setup. Only an admin may
+ * call this. Approving flips the resident to "verified" so they can transact;
+ * rejecting sends them back to resubmit. We update their most recent ID record
+ * (the one under review) and stamp when it was reviewed.
+ */
+export async function reviewResident(input: {
+  userId: string;
+  decision: "approve" | "reject";
+}): Promise<ReviewResidentResult> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const roles = (session?.user as { roles?: UserRoles[] } | undefined)?.roles;
+  if (!session || !roles?.includes(UserRoles.ADMIN)) {
+    return { ok: false, error: "You don't have permission to do this." };
+  }
+
+  const id = await prisma.iD.findFirst({
+    where: { userId: input.userId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  });
+  if (!id) {
+    return { ok: false, error: "This resident hasn't submitted an ID yet." };
+  }
+
+  try {
+    await prisma.iD.update({
+      where: { id: id.id },
+      data: {
+        status:
+          input.decision === "approve" ? IDStatus.APPROVED : IDStatus.REJECTED,
+        reviewedAt: new Date(),
+      },
+    });
+  } catch (error) {
+    console.error("reviewResident failed", error);
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/residents");
+  revalidatePath("/admin/activity");
+
+  return { ok: true };
 }

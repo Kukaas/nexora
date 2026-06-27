@@ -99,6 +99,8 @@ model ID {
   type                      IDType
   number                    String
   image                     String
+  status                    IDStatus          @default(PENDING)
+  reviewedAt                DateTime?         @map("reviewed_at")
 
   userId                    String            @map("user_id")
   user                      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -128,4 +130,10 @@ enum IDType {
   GSIS
   PRC
   OTHERS
+}
+
+enum IDStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
