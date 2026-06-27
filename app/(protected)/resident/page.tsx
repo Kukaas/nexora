@@ -1,16 +1,13 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { RoleDashboard } from "../_components/role-dashboard";
+import { getSession } from "@/lib/session";
 
-export const metadata: Metadata = {
-  title: "Resident · Barangay Libtangin",
-};
-
-export default function ResidentPage() {
-  return (
-    <RoleDashboard
-      title="Resident dashboard"
-      description="Request documents, track your requests, and manage your profile."
-    />
-  );
+/**
+ * The resident portal lives at /resident/[id]. Landing on the bare /resident
+ * forwards to the signed-in resident's own dashboard.
+ */
+export default async function ResidentIndex() {
+  const session = await getSession();
+  if (!session) redirect("/sign-in");
+  redirect(`/resident/${session.user.id}`);
 }
