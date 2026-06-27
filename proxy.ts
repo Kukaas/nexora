@@ -2,14 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
 /**
- * Optimistic auth gate. This only checks for the presence of a session cookie
- * — it never hits the database, so it's cheap and edge-safe. A cookie can be
- * stale or forged, so it is NOT the real check: every protected route is also
- * guarded server-side in `app/(protected)/layout.tsx` and the per-role layouts.
- * The point here is just to bounce signed-out visitors before we render a
- * protected shell.
+ * Optimistic auth gate (Next's "proxy" convention, formerly middleware). This
+ * only checks for the presence of a session cookie — it never hits the
+ * database, so it's cheap and edge-safe. A cookie can be stale or forged, so it
+ * is NOT the real check: every protected route is also guarded server-side in
+ * `app/(protected)/layout.tsx` and the per-role layouts. The point here is just
+ * to bounce signed-out visitors before we render a protected shell.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const hasSession = getSessionCookie(request);
   if (hasSession) return NextResponse.next();
 
@@ -28,6 +28,7 @@ export const config = {
     "/secretary/:path*",
     "/treasurer/:path*",
     "/kagawad/:path*",
+    "/setup",
     "/start",
   ],
 };
