@@ -14,13 +14,15 @@ datasource db {
 
 model User {
   id                      String            @id @default(uuid())
-  // Collected during the post-registration resident setup, not at sign-up.
   name                    String?           @map("name")
   firstName               String?           @map("first_name")
   middleName              String?           @map("middle_name")
   lastName                String?           @map("last_name")
   email                   String
-  image                   String?           
+  image                   String?
+  birthDate               DateTime?         @map("birth_date")
+  mobileNumber            String?           @map("mobile_number")
+  profileCompletedAt      DateTime?         @map("profile_completed_at")
 
   emailVerified           Boolean           @default(false) @map("email_verified")
   createdAt               DateTime          @default(now()) @map("created_at")
