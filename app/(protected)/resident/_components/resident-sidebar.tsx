@@ -17,7 +17,6 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import {
   Sidebar,
   SidebarContent,
@@ -32,14 +31,16 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { MY_REQUESTS } from "../_data";
-import { announceComingSoon } from "./coming-soon";
 import type { ResidentUser } from "./resident-shell";
 import { SignOutMenuItem } from "../../_components/sign-out-menu-item";
 
-const actionNeeded = MY_REQUESTS.filter((r) => r.status === "action").length;
-
-export function ResidentSidebar({ user }: { user: ResidentUser }) {
+export function ResidentSidebar({
+  user,
+  actionNeeded,
+}: {
+  user: ResidentUser;
+  actionNeeded: number;
+}) {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
   const home = `/resident/${user.id}`;
@@ -119,15 +120,11 @@ export function ResidentSidebar({ user }: { user: ResidentUser }) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip="Request a document"
-                  onClick={() => {
-                    announceComingSoon("Document requests");
-                    closeOnMobile();
-                  }}
-                >
-                  <FilePlus2 />
-                  <span>Request a document</span>
+                <SidebarMenuButton asChild tooltip="Request a document">
+                  <a href="#request" onClick={closeOnMobile}>
+                    <FilePlus2 />
+                    <span>Request a document</span>
+                  </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, QrCode, Receipt } from "lucide-react";
+import { FileText, Megaphone, ScrollText } from "lucide-react";
 
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,23 +20,21 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import type { TreasurerUser } from "./treasurer-shell";
+import type { SecretaryUser } from "./secretary-shell";
 import { SignOutMenuItem } from "../../_components/sign-out-menu-item";
 
-export function TreasurerSidebar({
+export function SecretarySidebar({
   user,
   pendingCount,
-  docFeesPendingCount,
 }: {
-  user: TreasurerUser;
+  user: SecretaryUser;
   pendingCount: number;
-  docFeesPendingCount: number;
 }) {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
-  const home = `/treasurer/${user.id}`;
-  const documentFees = `${home}/document-fees`;
-  const methods = `${home}/methods`;
+  const home = `/secretary/${user.id}`;
+  const documents = `${home}/documents`;
+  const announcements = `${home}/announcements`;
 
   const closeOnMobile = () => {
     if (isMobile) setOpenMobile(false);
@@ -62,18 +60,18 @@ export function TreasurerSidebar({
 
       <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel>Treasury</SidebarGroupLabel>
+          <SidebarGroupLabel>Secretary</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
                   isActive={pathname === home}
-                  tooltip="Payments"
+                  tooltip="Document requests"
                 >
                   <Link href={home} onClick={closeOnMobile}>
-                    <Receipt />
-                    <span>Payments</span>
+                    <FileText />
+                    <span>Requests</span>
                   </Link>
                 </SidebarMenuButton>
                 {pendingCount > 0 && (
@@ -86,30 +84,25 @@ export function TreasurerSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname.startsWith(documentFees)}
-                  tooltip="Document fees"
+                  isActive={pathname.startsWith(documents)}
+                  tooltip="Document catalog"
                 >
-                  <Link href={documentFees} onClick={closeOnMobile}>
-                    <FileText />
-                    <span>Document fees</span>
+                  <Link href={documents} onClick={closeOnMobile}>
+                    <ScrollText />
+                    <span>Documents</span>
                   </Link>
                 </SidebarMenuButton>
-                {docFeesPendingCount > 0 && (
-                  <SidebarMenuBadge className="text-accent-foreground">
-                    {docFeesPendingCount}
-                  </SidebarMenuBadge>
-                )}
               </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname.startsWith(methods)}
-                  tooltip="Payment methods"
+                  isActive={pathname.startsWith(announcements)}
+                  tooltip="Announcements"
                 >
-                  <Link href={methods} onClick={closeOnMobile}>
-                    <QrCode />
-                    <span>Payment methods</span>
+                  <Link href={announcements} onClick={closeOnMobile}>
+                    <Megaphone />
+                    <span>Announcements</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

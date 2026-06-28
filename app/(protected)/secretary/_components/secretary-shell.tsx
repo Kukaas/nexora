@@ -1,8 +1,5 @@
 "use client";
 
-import { FilePlus2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,42 +9,34 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
-import { ResidentSidebar } from "./resident-sidebar";
+import { SecretarySidebar } from "./secretary-sidebar";
 
-export type ResidentUser = {
+export type SecretaryUser = {
   id: string;
   name: string;
   initials: string;
   image?: string | null;
 };
 
-export function ResidentShell({
+export function SecretaryShell({
   user,
-  actionNeeded,
+  pendingCount,
   children,
 }: {
-  user: ResidentUser;
-  actionNeeded: number;
+  user: SecretaryUser;
+  pendingCount: number;
   children: React.ReactNode;
 }) {
   return (
     <TooltipProvider delayDuration={0}>
       <SidebarProvider>
-        <ResidentSidebar user={user} actionNeeded={actionNeeded} />
+        <SecretarySidebar user={user} pendingCount={pendingCount} />
         <SidebarInset>
           <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background/85 px-4 backdrop-blur-md sm:px-6">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-1 h-5" />
             <NexoraGlyph className="size-7 text-primary md:hidden" />
-            <span className="text-sm font-medium">Resident portal</span>
-            <div className="ml-auto flex items-center gap-2">
-              <Button asChild className="hidden sm:inline-flex">
-                <a href="#request">
-                  <FilePlus2 />
-                  Request a document
-                </a>
-              </Button>
-            </div>
+            <span className="text-sm font-medium">Secretary</span>
           </header>
 
           <div className="flex-1 bg-muted/30">

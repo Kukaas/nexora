@@ -1,13 +1,17 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { PaymentStatus } from "@/app/generated/prisma/enums";
+import {
+  DocumentRequestStatus,
+  PaymentStatus,
+} from "@/app/generated/prisma/enums";
 import {
   METHOD_ORDER,
   type PaymentDTO,
   type PaymentMethodDTO,
   type PaymentSummary,
 } from "@/lib/payments";
+import type { DocumentRequestDTO } from "@/lib/documents";
 
 /**
  * Server-side read models for the treasurer screens. Everything returned here
@@ -72,6 +76,115 @@ export async function getPaymentSummary(): Promise<PaymentSummary> {
     pendingTotal: Number(pending._sum.amount ?? 0),
     verifiedThisMonth: verifiedThisMonth._count,
     verifiedThisMonthTotal: Number(verifiedThisMonth._sum.amount ?? 0),
+  };
+}
+
+// ── Document-request fees ────────────────────────────────────────────────────
+//
+// Document requests carry their own payment (method, reference, proof) instead
+// of a separate Payment row. The treasurer verifies that payment before the
+// secretary prepares the document, so these reads power the treasurer's
+// document-fees queue. Mirrors the request reads in `@/lib/secretary-data`.
+
+export async function getDocumentRequests(
+  status?: DocumentRequestStatus,
+): Promise<DocumentRequestDTO[]> {
+  const rows = await prisma.documentRequest.findMany({
+    where: status ? { status } : undefined,
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+    include: {
+      requester: { select: { email: true } },
+      reviewedBy: { select: { name: true, firstName: true, lastName: true } },
+    },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    referenceNumber: row.referenceNumber,
+    documentName: row.documentName,
+    fee: Number(row.fee),
+    purpose: row.purpose,
+    method: row.method,
+    paymentReference: row.paymentReference,
+    proofImage: row.proofImage,
+    status: row.status,
+    note: row.note,
+    requesterName: row.requesterName,
+    requesterEmail: row.requester?.email ?? null,
+    reviewedByName: reviewerName(row.reviewedBy),
+    reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    releasedAt: row.releasedAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+export async function getDocumentRequestById(
+  id: string,
+): Promise<DocumentRequestDTO | null> {
+  const row = await prisma.documentRequest.findUnique({
+    where: { id },
+    include: {
+      requester: { select: { email: true } },
+      reviewedBy: { select: { name: true, firstName: true, lastName: true } },
+    },
+  });
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    referenceNumber: row.referenceNumber,
+    documentName: row.documentName,
+    fee: Number(row.fee),
+    purpose: row.purpose,
+    method: row.method,
+    paymentReference: row.paymentReference,
+    proofImage: row.proofImage,
+    status: row.status,
+    note: row.note,
+    requesterName: row.requesterName,
+    requesterEmail: row.requester?.email ?? null,
+    reviewedByName: reviewerName(row.reviewedBy),
+    reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    releasedAt: row.releasedAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function getDocumentFeeSummary(): Promise<{
+  pendingCount: number;
+  pendingTotal: number;
+  clearedThisMonth: number;
+  clearedThisMonthTotal: number;
+}> {
+  const startOfMonth = new Date();
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const [pending, cleared] = await Promise.all([
+    prisma.documentRequest.aggregate({
+      where: { status: DocumentRequestStatus.PENDING },
+      _count: true,
+      _sum: { fee: true },
+    }),
+    // "Cleared" = the treasurer verified the payment this month (it left PENDING
+    // and wasn't rejected), regardless of where the secretary has taken it since.
+    prisma.documentRequest.aggregate({
+      where: {
+        status: {
+          in: [DocumentRequestStatus.PROCESSING, DocumentRequestStatus.READY],
+        },
+        reviewedAt: { gte: startOfMonth },
+      },
+      _count: true,
+      _sum: { fee: true },
+    }),
+  ]);
+
+  return {
+    pendingCount: pending._count,
+    pendingTotal: Number(pending._sum.fee ?? 0),
+    clearedThisMonth: cleared._count,
+    clearedThisMonthTotal: Number(cleared._sum.fee ?? 0),
   };
 }
 

@@ -21,16 +21,22 @@ export type TreasurerUser = {
 export function TreasurerShell({
   user,
   pendingCount,
+  docFeesPendingCount,
   children,
 }: {
   user: TreasurerUser;
   pendingCount: number;
+  docFeesPendingCount: number;
   children: React.ReactNode;
 }) {
   return (
     <TooltipProvider delayDuration={0}>
       <SidebarProvider>
-        <TreasurerSidebar user={user} pendingCount={pendingCount} />
+        <TreasurerSidebar
+          user={user}
+          pendingCount={pendingCount}
+          docFeesPendingCount={docFeesPendingCount}
+        />
         <SidebarInset>
           <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background/85 px-4 backdrop-blur-md sm:px-6">
             <SidebarTrigger className="-ml-1" />
