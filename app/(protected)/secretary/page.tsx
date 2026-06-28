@@ -1,16 +1,13 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { RoleDashboard } from "../_components/role-dashboard";
+import { requireSession } from "@/lib/session";
 
-export const metadata: Metadata = {
-  title: "Secretary · Barangay Libtangin",
-};
-
-export default function SecretaryPage() {
-  return (
-    <RoleDashboard
-      title="Secretary dashboard"
-      description="Process document requests, records, and certificates."
-    />
-  );
+/**
+ * Bare `/secretary` forwards to the secretary's own id-scoped home
+ * (`/secretary/{userId}`), where the console lives. Keeping the canonical URL
+ * id-scoped means a secretary's links are stable and unambiguous.
+ */
+export default async function SecretaryIndex() {
+  const session = await requireSession();
+  redirect(`/secretary/${session.user.id}`);
 }

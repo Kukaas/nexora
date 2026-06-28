@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/session";
-import { getPaymentSummary } from "@/lib/treasurer-data";
+import { getDocumentFeeSummary, getPaymentSummary } from "@/lib/treasurer-data";
 import { UserRoles } from "@/app/generated/prisma/enums";
 import { TreasurerShell } from "./_components/treasurer-shell";
 
@@ -9,7 +9,10 @@ export default async function TreasurerLayout({
   children: React.ReactNode;
 }) {
   const session = await requireRole(UserRoles.TREASURER);
-  const summary = await getPaymentSummary();
+  const [summary, docFees] = await Promise.all([
+    getPaymentSummary(),
+    getDocumentFeeSummary(),
+  ]);
 
   const u = session.user as {
     id: string;
@@ -29,6 +32,7 @@ export default async function TreasurerLayout({
     <TreasurerShell
       user={{ id: u.id, name, initials: initialsOf(name), image: u.image }}
       pendingCount={summary.pendingCount}
+      docFeesPendingCount={docFees.pendingCount}
     >
       {children}
     </TreasurerShell>

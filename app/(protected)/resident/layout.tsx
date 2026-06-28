@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/session";
 import { resolveHomePath } from "@/lib/roles";
 import { isProfileComplete } from "@/lib/profile";
+import { getActionNeededCount } from "@/lib/documents-data";
 import { UserRoles } from "@/app/generated/prisma/enums";
 import { ResidentShell } from "./_components/resident-shell";
 
@@ -37,9 +38,12 @@ export default async function ResidentLayout({
     u.name?.trim() ||
     u.email;
 
+  const actionNeeded = await getActionNeededCount(u.id);
+
   return (
     <ResidentShell
       user={{ id: u.id, name, initials: initialsOf(name), image: u.image }}
+      actionNeeded={actionNeeded}
     >
       {children}
     </ResidentShell>

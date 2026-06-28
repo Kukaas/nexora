@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import {
   DocumentRequestStatus,
   PaymentMethodType,
-  PaymentStatus,
 } from "@/app/generated/prisma/enums";
 import { METHOD_LABELS } from "@/lib/payments";
 
@@ -21,7 +20,7 @@ const peso = new Intl.NumberFormat("en-PH", {
   minimumFractionDigits: 2,
 });
 
-/** `1234.5` → `₱1,234.50`. Centralized so every amount reads the same way. */
+/** `50` → `₱50.00`. Centralized so every fee reads the same way. */
 export function formatPeso(amount: number): string {
   return peso.format(amount);
 }
@@ -38,58 +37,22 @@ export function formatDateTime(iso: string): string {
   return dateTime.format(new Date(iso));
 }
 
-/**
- * Status as a badge: color paired with an icon and a word, never color alone
- * (color-blind safety, low-literacy clarity). Pending wears the brand amber,
- * verified a green wash, rejected the destructive wash.
- */
-export function StatusBadge({
-  status,
-  className,
-}: {
-  status: PaymentStatus;
-  className?: string;
-}) {
-  const map = {
-    [PaymentStatus.PENDING]: {
-      label: "Pending",
-      icon: Clock,
-      classes: "bg-accent text-accent-foreground",
-    },
-    [PaymentStatus.VERIFIED]: {
-      label: "Verified",
-      icon: CheckCircle2,
-      classes:
-        "bg-emerald-600/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
-    },
-    [PaymentStatus.REJECTED]: {
-      label: "Rejected",
-      icon: XCircle,
-      classes: "bg-destructive/10 text-destructive",
-    },
-  } as const;
+const dateOnly = new Intl.DateTimeFormat("en-PH", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
 
-  const { label, icon: Icon, classes } = map[status];
-
-  return (
-    <span
-      className={cn(
-        "inline-flex h-6 w-fit items-center gap-1.5 rounded-3xl px-2.5 text-xs font-medium",
-        classes,
-        className,
-      )}
-    >
-      <Icon className="size-3.5" aria-hidden />
-      {label}
-    </span>
-  );
+export function formatDate(iso: string): string {
+  return dateOnly.format(new Date(iso));
 }
 
 /**
- * Document-request status as a badge. From the treasurer's seat, PENDING is the
- * action queue (amber); PROCESSING/READY mean the payment is already verified
- * and the request has moved on to the secretary (a calm wash); REJECTED is the
- * destructive wash.
+ * Request status as a badge: color paired with an icon and a word, never color
+ * alone (color-blind safety, low-literacy clarity). Pending wears the brand
+ * amber to mark the secretary's action queue; processing is a calm blue while
+ * the document is prepared; ready is the green of a finished document; rejected
+ * the destructive wash.
  */
 export function RequestStatusBadge({
   status,
@@ -105,13 +68,13 @@ export function RequestStatusBadge({
       classes: "bg-accent text-accent-foreground",
     },
     [DocumentRequestStatus.PROCESSING]: {
-      label: "Verified",
+      label: "Processing",
       icon: Loader,
       classes:
         "bg-sky-600/10 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300",
     },
     [DocumentRequestStatus.READY]: {
-      label: "Released",
+      label: "Ready",
       icon: CheckCircle2,
       classes:
         "bg-emerald-600/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",

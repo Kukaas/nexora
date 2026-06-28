@@ -6,33 +6,30 @@ import { ChevronDown, MapPin, Megaphone, Pin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
-  ANNOUNCEMENTS,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
-  formatShortDate,
-  type Announcement,
-  type AnnouncementCategory,
-} from "../_data";
+  type AnnouncementDTO,
+} from "@/lib/documents";
+import { AnnouncementCategory } from "@/app/generated/prisma/enums";
+import { formatShortDate } from "../_data";
 
 type Filter = AnnouncementCategory | "all";
 
 const FILTERS: Filter[] = ["all", ...CATEGORY_ORDER];
 
-// Pinned first, then soonest date first.
-const SORTED = [...ANNOUNCEMENTS].sort((a, b) => {
-  if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
-  return a.date.localeCompare(b.date);
-});
-
-export function AnnouncementsFeed() {
+export function AnnouncementsFeed({
+  announcements,
+}: {
+  announcements: AnnouncementDTO[];
+}) {
   const [filter, setFilter] = useState<Filter>("all");
 
   const items = useMemo(
     () =>
       filter === "all"
-        ? SORTED
-        : SORTED.filter((a) => a.category === filter),
-    [filter],
+        ? announcements
+        : announcements.filter((a) => a.category === filter),
+    [announcements, filter],
   );
 
   return (
@@ -52,37 +49,40 @@ export function AnnouncementsFeed() {
         </div>
       </div>
 
-      <div
-        role="group"
-        aria-label="Filter announcements by category"
-        className="mb-4 flex flex-wrap gap-2"
-      >
-        {FILTERS.map((value) => {
-          const active = filter === value;
-          return (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={active}
-              onClick={() => setFilter(value)}
-              className={cn(
-                "inline-flex h-9 items-center rounded-full border px-3.5 text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
-                active
-                  ? "border-transparent bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {value === "all" ? "All" : CATEGORY_LABELS[value]}
-            </button>
-          );
-        })}
-      </div>
+      {announcements.length > 0 && (
+        <div
+          role="group"
+          aria-label="Filter announcements by category"
+          className="mb-4 flex flex-wrap gap-2"
+        >
+          {FILTERS.map((value) => {
+            const active = filter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => setFilter(value)}
+                className={cn(
+                  "inline-flex h-9 items-center rounded-full border px-3.5 text-sm font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+                  active
+                    ? "border-transparent bg-primary text-primary-foreground"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                {value === "all" ? "All" : CATEGORY_LABELS[value]}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-4xl bg-card shadow-md ring-1 ring-foreground/5 dark:ring-foreground/10">
         {items.length === 0 ? (
           <p className="px-5 py-12 text-center text-sm text-muted-foreground">
-            No {filter !== "all" ? CATEGORY_LABELS[filter].toLowerCase() : ""}{" "}
-            announcements right now. Check back soon.
+            {announcements.length === 0
+              ? "No announcements right now. Check back soon."
+              : `No ${CATEGORY_LABELS[filter as AnnouncementCategory].toLowerCase()} announcements right now.`}
           </p>
         ) : (
           <ul key={filter} className="divide-y divide-border">
@@ -102,7 +102,7 @@ export function AnnouncementsFeed() {
   );
 }
 
-function AnnouncementRow({ item }: { item: Announcement }) {
+function AnnouncementRow({ item }: { item: AnnouncementDTO }) {
   const [open, setOpen] = useState(false);
   const detailId = `${item.id}-detail`;
 
@@ -127,7 +127,7 @@ function AnnouncementRow({ item }: { item: Announcement }) {
               </span>
             )}
             <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-              {formatShortDate(item.date)}
+              {formatShortDate(item.createdAt)}
             </span>
           </div>
 
@@ -141,7 +141,7 @@ function AnnouncementRow({ item }: { item: Announcement }) {
               !open && "line-clamp-2",
             )}
           >
-            {item.summary}
+            {item.body}
           </p>
         </div>
 
@@ -154,19 +154,14 @@ function AnnouncementRow({ item }: { item: Announcement }) {
         />
       </button>
 
-      {open && (
+      {open && item.place && (
         <div
           id={detailId}
-          className="mt-3 space-y-3 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
+          className="mt-3 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
         >
-          {item.place && (
-            <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <MapPin className="size-4 text-accent-foreground" aria-hidden />
-              {item.place}
-            </p>
-          )}
-          <p className="max-w-[68ch] text-sm leading-relaxed text-foreground/80 text-pretty">
-            {item.detail}
+          <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+            <MapPin className="size-4 text-accent-foreground" aria-hidden />
+            {item.place}
           </p>
         </div>
       )}

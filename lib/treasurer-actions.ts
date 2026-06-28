@@ -8,6 +8,7 @@ import { getSession } from "@/lib/session";
 import { hasAccess } from "@/lib/roles";
 import { uploadImage } from "@/lib/cloudinary";
 import {
+  DocumentRequestStatus,
   PaymentMethodType,
   PaymentStatus,
   UserRoles,
@@ -76,6 +77,62 @@ export async function reviewPayment(
   });
 
   revalidatePath(`/treasurer/${auth.userId}`);
+  return { ok: true };
+}
+
+const reviewDocumentSchema = z.object({
+  requestId: z.string().min(1),
+  decision: z.enum(["VERIFIED", "REJECTED"]),
+  note: z.string().trim().max(500).optional(),
+});
+
+/**
+ * Verify or reject the payment attached to a document request. Verifying moves
+ * the request into PROCESSING and hands it to the secretary to prepare and
+ * release the document; rejecting sends it back to the resident with a required
+ * reason. Payment verification is the treasurer's call alone — the secretary
+ * never touches it.
+ */
+export async function reviewDocumentRequest(
+  input: z.infer<typeof reviewDocumentSchema>,
+): Promise<ActionResult> {
+  const auth = await requireTreasurer();
+  if (!auth.ok) return auth;
+
+  const parsed = reviewDocumentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Something looked off with that request. Try again." };
+  }
+  const { requestId, decision, note } = parsed.data;
+
+  if (decision === "REJECTED" && !note) {
+    return { ok: false, error: "Add a short reason so the resident knows what to fix." };
+  }
+
+  const existing = await prisma.documentRequest.findUnique({
+    where: { id: requestId },
+    select: { id: true },
+  });
+  if (!existing) return { ok: false, error: "That request no longer exists." };
+
+  await prisma.documentRequest.update({
+    where: { id: requestId },
+    data: {
+      status:
+        decision === "VERIFIED"
+          ? DocumentRequestStatus.PROCESSING
+          : DocumentRequestStatus.REJECTED,
+      note: decision === "REJECTED" ? note : null,
+      reviewedById: auth.userId,
+      reviewedAt: new Date(),
+      // Clear any prior release stamp if a READY request is sent back.
+      releasedAt: null,
+    },
+  });
+
+  revalidatePath(`/treasurer/${auth.userId}/document-fees`);
+  // The secretary's queue keys off PROCESSING, so refresh their console too.
+  revalidatePath("/secretary", "layout");
   return { ok: true };
 }
 

@@ -21,14 +21,20 @@ import {
 } from "@/components/ui/card";
 import { getSession } from "@/lib/session";
 import { getResidencyStatus, type ResidencyStatus } from "@/lib/profile";
+import {
+  getActiveDocumentTypes,
+  getMyDocumentRequests,
+  getPublishedAnnouncements,
+} from "@/lib/documents-data";
+import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { AnnouncementsFeed } from "../_components/announcements-feed";
 import { ComingSoonButton } from "../_components/coming-soon-button";
-import { QuickActions } from "../_components/quick-actions";
+import { DocumentRequest } from "../_components/document-request";
 import { StatusBadge } from "../_components/status-badge";
-import { MY_REQUESTS, formatFullDate, formatShortDate } from "../_data";
+import { formatFullDate, formatShortDate, type RequestStatus } from "../_data";
 
 export const metadata: Metadata = {
   title: "Resident portal · Barangay Libtangin",
@@ -57,6 +63,15 @@ export default async function ResidentPage({
   const residency = await getResidencyStatus(session.user.id);
   const verified = residency === "approved";
 
+  // Verified residents get the live request tools and their own request list;
+  // everyone sees the published announcements. Unverified residents skip the
+  // request-only queries since they can't transact yet.
+  const [docTypes, myRequests, announcements] = await Promise.all([
+    verified ? getActiveDocumentTypes() : Promise.resolve([]),
+    verified ? getMyDocumentRequests(session.user.id) : Promise.resolve([]),
+    getPublishedAnnouncements(),
+  ]);
+
   return (
     <div className="space-y-6 lg:space-y-8">
       <header>
@@ -78,8 +93,12 @@ export default async function ResidentPage({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-8 lg:space-y-10">
-          {verified ? <QuickActions /> : <ReviewNotice status={residency} />}
-          <AnnouncementsFeed />
+          {verified ? (
+            <DocumentRequest types={docTypes} basePath={`/resident/${id}`} />
+          ) : (
+            <ReviewNotice status={residency} />
+          )}
+          <AnnouncementsFeed announcements={announcements} />
         </div>
 
         <aside className="space-y-6">
@@ -103,39 +122,45 @@ export default async function ResidentPage({
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ul className="-my-1 divide-y divide-border">
-                    {MY_REQUESTS.map((req) => (
-                      <li
-                        key={req.id}
-                        className="flex items-start justify-between gap-3 py-3.5"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
-                            {req.document}
-                          </p>
-                          <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                            {req.reference}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1">
-                          <StatusBadge status={req.status} />
-                          <span className="text-[0.6875rem] text-muted-foreground tabular-nums">
-                            Updated {formatShortDate(req.updatedAt)}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  {myRequests.length === 0 ? (
+                    <p className="py-2 text-sm text-muted-foreground text-pretty">
+                      You haven&apos;t requested any documents yet. Pick one above
+                      to get started.
+                    </p>
+                  ) : (
+                    <ul className="-my-1 divide-y divide-border">
+                      {myRequests.slice(0, 5).map((req) => (
+                        <li
+                          key={req.id}
+                          className="flex items-start justify-between gap-3 py-3.5"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {req.documentName}
+                            </p>
+                            <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                              {req.referenceNumber}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            <StatusBadge status={residentStatus(req.status)} />
+                            <span className="text-[0.6875rem] text-muted-foreground tabular-nums">
+                              Updated{" "}
+                              {formatShortDate(req.reviewedAt ?? req.createdAt)}
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </CardContent>
                 <CardFooter>
-                  <ComingSoonButton
-                    feature="Document requests"
-                    className="w-full"
-                    size="lg"
-                  >
-                    <FilePlus2 />
-                    Request a document
-                  </ComingSoonButton>
+                  <Button asChild className="w-full" size="lg">
+                    <a href="#request">
+                      <FilePlus2 />
+                      Request a document
+                    </a>
+                  </Button>
                 </CardFooter>
               </Card>
             </section>
@@ -197,6 +222,20 @@ export default async function ResidentPage({
       </div>
     </div>
   );
+}
+
+/** Map a document request's lifecycle status onto the resident-facing badge. */
+function residentStatus(status: DocumentRequestStatus): RequestStatus {
+  switch (status) {
+    case DocumentRequestStatus.READY:
+      return "issued";
+    case DocumentRequestStatus.PROCESSING:
+      return "processing";
+    case DocumentRequestStatus.REJECTED:
+      return "action";
+    default:
+      return "submitted";
+  }
 }
 
 /** The residency-verification chip shown next to the date in the greeting. */
