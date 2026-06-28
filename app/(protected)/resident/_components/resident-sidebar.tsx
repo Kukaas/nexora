@@ -34,8 +34,8 @@ import {
 } from "@/components/ui/sidebar";
 import { MY_REQUESTS } from "../_data";
 import { announceComingSoon } from "./coming-soon";
-import { SignOutMenuItem } from "./sign-out-menu-item";
 import type { ResidentUser } from "./resident-shell";
+import { SignOutMenuItem } from "../../_components/sign-out-menu-item";
 
 const actionNeeded = MY_REQUESTS.filter((r) => r.status === "action").length;
 

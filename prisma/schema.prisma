@@ -13,49 +13,48 @@ datasource db {
 }
 
 model User {
-  id                      String            @id @default(uuid())
-  name                    String?           @map("name")
-  firstName               String?           @map("first_name")
-  middleName              String?           @map("middle_name")
-  lastName                String?           @map("last_name")
-  email                   String
-  image                   String?
-  birthDate               DateTime?         @map("birth_date")
-  mobileNumber            String?           @map("mobile_number")
-  profileCompletedAt      DateTime?         @map("profile_completed_at")
-  mustChangePassword      Boolean           @default(false) @map("must_change_password")
+  id                 String    @id @default(uuid())
+  name               String?   @map("name")
+  firstName          String?   @map("first_name")
+  middleName         String?   @map("middle_name")
+  lastName           String?   @map("last_name")
+  email              String
+  image              String?
+  birthDate          DateTime? @map("birth_date")
+  mobileNumber       String?   @map("mobile_number")
+  profileCompletedAt DateTime? @map("profile_completed_at")
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
 
-  emailVerified           Boolean           @default(false) @map("email_verified")
-  createdAt               DateTime          @default(now()) @map("created_at")
-  updatedAt               DateTime          @updatedAt @map("updated_at")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
+  sessions Session[]
+  accounts Account[]
+  roles    UserRoles[] @default([RESIDENT]) @map("roles")
+  ids      ID[]
 
-  sessions                Session[]
-  accounts                Account[]
-  roles                   UserRoles[]       @default([RESIDENT]) @map("roles")
-  ids                     ID[]
-
-  payments                Payment[]         @relation("PaymentPayer")
-  reviewedPayments        Payment[]         @relation("PaymentReviewer")
-  updatedPaymentMethods   PaymentMethod[]   @relation("PaymentMethodEditor")
+  payments              Payment[]       @relation("PaymentPayer")
+  reviewedPayments      Payment[]       @relation("PaymentReviewer")
+  updatedPaymentMethods PaymentMethod[] @relation("PaymentMethodEditor")
 
   @@unique([email])
   @@map("user")
 }
 
 model Session {
-  id                      String            @id @default(uuid())
-  token                   String
-  ipAddress               String?           @map("ip_address")
-  userAgent               String?           @map("user_agent")
+  id        String  @id @default(uuid())
+  token     String
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
 
-  userId                  String            @map("user_id")
+  userId String @map("user_id")
 
-  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  expiresAt               DateTime          @map("expires_at")
-  createdAt               DateTime          @default(now()) @map("created_at")
-  updatedAt               DateTime          @updatedAt @map("updated_at")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([token])
   @@index([userId])
@@ -63,81 +62,80 @@ model Session {
 }
 
 model Account {
-  id                       String            @id @default(uuid())
-  scope                    String?           @map("scope")
-  password                 String?           @map("password")
-  accessToken              String?           @map("access_token")
-  refreshToken             String?           @map("refresh_token")
-  idToken                  String?           @map("id_token")
+  id           String  @id @default(uuid())
+  scope        String? @map("scope")
+  password     String? @map("password")
+  accessToken  String? @map("access_token")
+  refreshToken String? @map("refresh_token")
+  idToken      String? @map("id_token")
 
-  accountId                String            @map("account_id")
-  providerId               String            @map("provider_id")
-  userId                   String            @map("user_id")
+  accountId  String @map("account_id")
+  providerId String @map("provider_id")
+  userId     String @map("user_id")
 
-  user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  accessTokenExpiresAt     DateTime?         @map("access_token_expires_at")
-  refreshTokenExpiresAt    DateTime?         @map("refresh_token_expires_at")
-  createdAt                DateTime          @default(now()) @map("created_at")
-  updatedAt                DateTime          @updatedAt @map("updated_at")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
   @@index([userId])
   @@map("account")
 }
 
 model Verification {
-  id                        String            @id @default(uuid())
-  identifier                String
-  value                     String
+  id         String @id @default(uuid())
+  identifier String
+  value      String
 
-  expiresAt                 DateTime          @map("expires_at")
-  createdAt                 DateTime          @default(now()) @map("created_at")
-  updatedAt                 DateTime          @updatedAt @map("updated_at")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([identifier])
   @@map("verification")
 }
 
 model ID {
-  id                        String            @id @default(uuid())
-  type                      IDType
-  number                    String
-  image                     String
-  status                    IDStatus          @default(PENDING)
-  reviewedAt                DateTime?         @map("reviewed_at")
+  id         String    @id @default(uuid())
+  type       IDType
+  number     String
+  image      String
+  status     IDStatus  @default(PENDING)
+  reviewedAt DateTime? @map("reviewed_at")
 
-  userId                    String            @map("user_id")
-  user                      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt                 DateTime          @default(now()) @map("created_at")
-  updatedAt                 DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@index([userId])
   @@unique([type, number])
+  @@index([userId])
   @@map("id")
 }
 
 model PaymentMethod {
-  id            String            @id @default(uuid())
-  type          PaymentMethodType
-  enabled       Boolean           @default(false)
+  id      String            @id @default(uuid())
+  type    PaymentMethodType
+  enabled Boolean           @default(false)
 
-  accountName   String?           @map("account_name")
-  accountNumber String?           @map("account_number")
-  qrImage       String?           @map("qr_image")
+  accountName   String? @map("account_name")
+  accountNumber String? @map("account_number")
+  qrImage       String? @map("qr_image")
 
-  instructions  String?
+  instructions String?
 
-  updatedById   String?           @map("updated_by_id")
-  updatedBy     User?             @relation("PaymentMethodEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedById String? @map("updated_by_id")
+  updatedBy   User?   @relation("PaymentMethodEditor", fields: [updatedById], references: [id], onDelete: SetNull)
 
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([type])
   @@map("payment_method")
 }
-
 
 model Payment {
   id              String            @id @default(uuid())
@@ -147,25 +145,24 @@ model Payment {
   referenceNumber String?           @map("reference_number")
   proofImage      String?           @map("proof_image")
 
-  status          PaymentStatus     @default(PENDING)
-  reviewNote      String?           @map("review_note")
+  status     PaymentStatus @default(PENDING)
+  reviewNote String?       @map("review_note")
 
-  payerId         String            @map("payer_id")
-  payer           User              @relation("PaymentPayer", fields: [payerId], references: [id], onDelete: Cascade)
-  payerName       String            @map("payer_name")
+  payerId   String @map("payer_id")
+  payer     User   @relation("PaymentPayer", fields: [payerId], references: [id], onDelete: Cascade)
+  payerName String @map("payer_name")
 
-  reviewedById    String?           @map("reviewed_by_id")
-  reviewedBy      User?             @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  reviewedAt      DateTime?         @map("reviewed_at")
+  reviewedById String?   @map("reviewed_by_id")
+  reviewedBy   User?     @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime? @map("reviewed_at")
 
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([status])
   @@index([payerId])
   @@map("payment")
 }
-
 
 enum UserRoles {
   ADMIN
@@ -187,7 +184,7 @@ enum IDType {
 
 enum IDStatus {
   PENDING
-  VERIFIED
+  APPROVED
   REJECTED
 }
 

@@ -1,16 +1,13 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { RoleDashboard } from "../_components/role-dashboard";
+import { requireSession } from "@/lib/session";
 
-export const metadata: Metadata = {
-  title: "Treasurer · Barangay Libtangin",
-};
-
-export default function TreasurerPage() {
-  return (
-    <RoleDashboard
-      title="Treasurer dashboard"
-      description="Track payments, fees, and financial records."
-    />
-  );
+/**
+ * Bare `/treasurer` forwards to the treasurer's own id-scoped home
+ * (`/treasurer/{userId}`), where the portal lives. Keeping the canonical URL
+ * id-scoped means a treasurer's links are stable and unambiguous.
+ */
+export default async function TreasurerIndex() {
+  const session = await requireSession();
+  redirect(`/treasurer/${session.user.id}`);
 }
