@@ -35,6 +35,10 @@ model User {
   roles                   UserRoles[]       @default([RESIDENT]) @map("roles")
   ids                     ID[]
 
+  payments                Payment[]         @relation("PaymentPayer")
+  reviewedPayments        Payment[]         @relation("PaymentReviewer")
+  updatedPaymentMethods   PaymentMethod[]   @relation("PaymentMethodEditor")
+
   @@unique([email])
   @@map("user")
 }
@@ -113,6 +117,55 @@ model ID {
   @@map("id")
 }
 
+model PaymentMethod {
+  id            String            @id @default(uuid())
+  type          PaymentMethodType
+  enabled       Boolean           @default(false)
+
+  accountName   String?           @map("account_name")
+  accountNumber String?           @map("account_number")
+  qrImage       String?           @map("qr_image")
+
+  instructions  String?
+
+  updatedById   String?           @map("updated_by_id")
+  updatedBy     User?             @relation("PaymentMethodEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  @@unique([type])
+  @@map("payment_method")
+}
+
+
+model Payment {
+  id              String            @id @default(uuid())
+  purpose         String
+  amount          Decimal           @db.Decimal(10, 2)
+  method          PaymentMethodType
+  referenceNumber String?           @map("reference_number")
+  proofImage      String?           @map("proof_image")
+
+  status          PaymentStatus     @default(PENDING)
+  reviewNote      String?           @map("review_note")
+
+  payerId         String            @map("payer_id")
+  payer           User              @relation("PaymentPayer", fields: [payerId], references: [id], onDelete: Cascade)
+  payerName       String            @map("payer_name")
+
+  reviewedById    String?           @map("reviewed_by_id")
+  reviewedBy      User?             @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?         @map("reviewed_at")
+
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([payerId])
+  @@map("payment")
+}
+
 
 enum UserRoles {
   ADMIN
@@ -134,6 +187,18 @@ enum IDType {
 
 enum IDStatus {
   PENDING
-  APPROVED
+  VERIFIED
+  REJECTED
+}
+
+enum PaymentMethodType {
+  GCASH
+  MAYA
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
   REJECTED
 }
