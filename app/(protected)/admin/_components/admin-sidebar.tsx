@@ -28,8 +28,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { SignOutMenuItem } from "./sign-out-menu-item";
 import type { AdminUser } from "./admin-shell";
+import { SignOutMenuItem } from "../../_components/sign-out-menu-item";
 
 type NavItem = {
   href: string;

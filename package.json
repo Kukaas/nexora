@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:admin": "bun run prisma/seeder/admin.seeder.ts"
+    "seed:admin": "bun run prisma/seeder/admin.seeder.ts",
+    "seed:payments": "bun run prisma/seeder/payments.seeder.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
