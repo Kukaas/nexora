@@ -3,14 +3,16 @@ import "server-only";
 import { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
-import type {
-  AnnouncementDTO,
-  DocumentRequestDTO,
-  DocumentTypeDTO,
-  RequestPage,
-  RequestQuery,
-  RequestStatusCounts,
-  RequestSummary,
+import {
+  parseDocumentFields,
+  parseDocumentFieldValues,
+  type AnnouncementDTO,
+  type DocumentRequestDTO,
+  type DocumentTypeDTO,
+  type RequestPage,
+  type RequestQuery,
+  type RequestStatusCounts,
+  type RequestSummary,
 } from "@/lib/documents";
 
 /**
@@ -47,6 +49,7 @@ function toRequestDTO(row: RequestRow): DocumentRequestDTO {
     reviewedByName: personName(row.reviewedBy),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     releasedAt: row.releasedAt?.toISOString() ?? null,
+    fieldValues: parseDocumentFieldValues(row.fieldValues),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -178,9 +181,33 @@ export async function getDocumentTypes(): Promise<DocumentTypeDTO[]> {
     fee: Number(row.fee),
     turnaroundDays: row.turnaroundDays,
     active: row.active,
+    fields: parseDocumentFields(row.fields),
     requestCount: row._count.requests,
     updatedAt: row.updatedAt?.toISOString() ?? null,
   }));
+}
+
+/** A single document type with its request count, for the secretary editor. */
+export async function getDocumentTypeById(
+  id: string,
+): Promise<DocumentTypeDTO | null> {
+  const row = await prisma.documentType.findUnique({
+    where: { id },
+    include: { _count: { select: { requests: true } } },
+  });
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    fee: Number(row.fee),
+    turnaroundDays: row.turnaroundDays,
+    active: row.active,
+    fields: parseDocumentFields(row.fields),
+    requestCount: row._count.requests,
+    updatedAt: row.updatedAt?.toISOString() ?? null,
+  };
 }
 
 export async function getAnnouncements(): Promise<AnnouncementDTO[]> {

@@ -2,10 +2,12 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { toAnnouncementDTO } from "@/lib/secretary-data";
-import type {
-  AnnouncementDTO,
-  DocumentRequestDTO,
-  DocumentTypeDTO,
+import {
+  parseDocumentFields,
+  parseDocumentFieldValues,
+  type AnnouncementDTO,
+  type DocumentRequestDTO,
+  type DocumentTypeDTO,
 } from "@/lib/documents";
 import type { PaymentMethodDTO } from "@/lib/payments";
 import { PaymentMethodType } from "@/app/generated/prisma/enums";
@@ -31,6 +33,7 @@ export async function getActiveDocumentTypes(): Promise<DocumentTypeDTO[]> {
     fee: Number(row.fee),
     turnaroundDays: row.turnaroundDays,
     active: row.active,
+    fields: parseDocumentFields(row.fields),
     requestCount: 0,
     updatedAt: null,
   }));
@@ -52,6 +55,7 @@ export async function getActiveDocumentTypeById(
     fee: Number(row.fee),
     turnaroundDays: row.turnaroundDays,
     active: row.active,
+    fields: parseDocumentFields(row.fields),
     requestCount: 0,
     updatedAt: null,
   };
@@ -82,6 +86,7 @@ export async function getMyDocumentRequests(
     reviewedByName: null,
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     releasedAt: row.releasedAt?.toISOString() ?? null,
+    fieldValues: parseDocumentFieldValues(row.fieldValues),
     createdAt: row.createdAt.toISOString(),
   }));
 }

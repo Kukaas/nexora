@@ -27,12 +27,33 @@ const DOCUMENT_TYPES = [
     description: "For employment, permits, and IDs.",
     fee: "50.00",
     turnaroundDays: 2,
+    fields: [
+      { id: "clr-name", label: "Full name", type: "text", required: true, options: [] },
+      { id: "clr-birth", label: "Birth date", type: "date", required: true, options: [] },
+      {
+        id: "clr-civil",
+        label: "Civil status",
+        type: "select",
+        required: true,
+        options: ["Single", "Married", "Widowed", "Separated"],
+      },
+    ],
   },
   {
     name: "Certificate of Residency",
     description: "Proof you live in the barangay.",
     fee: "30.00",
     turnaroundDays: 1,
+    fields: [
+      { id: "res-name", label: "Full name", type: "text", required: true, options: [] },
+      {
+        id: "res-years",
+        label: "Years of residency",
+        type: "number",
+        required: true,
+        options: [],
+      },
+    ],
   },
   {
     name: "Certificate of Indigency",

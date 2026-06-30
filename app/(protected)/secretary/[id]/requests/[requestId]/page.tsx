@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { AlertCircle, ArrowLeft, BanknoteIcon, ExternalLink } from "lucide-react";
 
 import { getDocumentRequestById } from "@/lib/secretary-data";
-import { requestHasPayment } from "@/lib/documents";
+import { formatFieldValue, requestHasPayment } from "@/lib/documents";
 import {
   formatDate,
   formatDateTime,
@@ -97,6 +97,11 @@ export default async function SecretaryRequestPage({
                 <Row label="Email">{request.requesterEmail}</Row>
               )}
               {request.purpose && <Row label="Purpose">{request.purpose}</Row>}
+              {request.fieldValues.map((field, i) => (
+                <Row key={i} label={field.label}>
+                  {formatFieldValue(field)}
+                </Row>
+              ))}
               {hasPayment && request.paymentReference && (
                 <Row label="Payment ref.">
                   <span className="font-mono">{request.paymentReference}</span>

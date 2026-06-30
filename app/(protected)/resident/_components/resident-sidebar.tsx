@@ -120,11 +120,15 @@ export function ResidentSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Request a document">
-                  <a href="#request" onClick={closeOnMobile}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(`${home}/request`)}
+                  tooltip="Request a document"
+                >
+                  <Link href={`${home}/request`} onClick={closeOnMobile}>
                     <FilePlus2 />
                     <span>Request a document</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 

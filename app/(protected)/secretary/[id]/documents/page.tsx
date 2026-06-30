@@ -7,7 +7,12 @@ export const metadata: Metadata = {
   title: "Documents · Secretary · Barangay Libtangin",
 };
 
-export default async function SecretaryDocumentsPage() {
+export default async function SecretaryDocumentsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const types = await getDocumentTypes();
 
   return (
@@ -22,7 +27,10 @@ export default async function SecretaryDocumentsPage() {
         </p>
       </header>
 
-      <DocumentTypesManager types={types} />
+      <DocumentTypesManager
+        types={types}
+        basePath={`/secretary/${id}/documents`}
+      />
     </div>
   );
 }

@@ -8,6 +8,10 @@ import { getSession } from "@/lib/session";
 import { isResidencyVerified } from "@/lib/profile";
 import { uploadImage } from "@/lib/cloudinary";
 import { PaymentMethodType } from "@/app/generated/prisma/enums";
+import {
+  parseDocumentFields,
+  type DocumentFieldValue,
+} from "@/lib/documents";
 
 export type SubmitResult =
   | { ok: true; referenceNumber: string }
@@ -58,13 +62,36 @@ export async function submitDocumentRequest(
   // The chosen document type must still exist and be active.
   const docType = await prisma.documentType.findUnique({
     where: { id: documentTypeId },
-    select: { id: true, name: true, fee: true, active: true },
+    select: { id: true, name: true, fee: true, active: true, fields: true },
   });
   if (!docType || !docType.active) {
     return {
       ok: false,
       error: "That document isn't available to request right now.",
     };
+  }
+
+  // Collect the resident's answers to the document's custom fields. The form
+  // sends them as a JSON object keyed by field id; we validate each against the
+  // catalog definition (required, valid dropdown choice) and snapshot the
+  // label/type/value onto the request so later edits never rewrite it.
+  const answers = readFieldAnswers(formData.get("fields"));
+  const fields = parseDocumentFields(docType.fields);
+  const fieldValues: DocumentFieldValue[] = [];
+  for (const field of fields) {
+    const value = (answers[field.id] ?? "").trim();
+    if (field.required && !value) {
+      return { ok: false, error: `Please fill in "${field.label}".` };
+    }
+    if (
+      value &&
+      field.type === "select" &&
+      field.options.length > 0 &&
+      !field.options.includes(value)
+    ) {
+      return { ok: false, error: `Choose a valid option for "${field.label}".` };
+    }
+    fieldValues.push({ label: field.label, type: field.type, value });
   }
 
   // A free document has no payment step at all: no method to pick, no channel to
@@ -151,6 +178,7 @@ export async function submitDocumentRequest(
       method: methodType,
       paymentReference: storedReference,
       proofImage,
+      fieldValues,
       requesterId: user.id,
       requesterName,
     },
@@ -183,4 +211,23 @@ function emptyToUndefined(value: FormDataEntryValue | null): string | undefined 
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : undefined;
+}
+
+/**
+ * Parse the custom-field answers the resident form sends as a JSON object keyed
+ * by field id. Anything malformed is treated as no answers given.
+ */
+function readFieldAnswers(raw: FormDataEntryValue | null): Record<string, string> {
+  if (typeof raw !== "string" || !raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return {};
+    const answers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (typeof value === "string") answers[key] = value;
+    }
+    return answers;
+  } catch {
+    return {};
+  }
 }

@@ -11,6 +11,7 @@ import {
   DocumentRequestStatus,
   UserRoles,
 } from "@/app/generated/prisma/enums";
+import { DOCUMENT_FIELD_TYPES } from "@/lib/documents";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -76,6 +77,14 @@ export async function markRequestReady(input: {
 
 // ── Document types (catalog) ─────────────────────────────────────────────────
 
+const documentFieldSchema = z.object({
+  id: z.string().min(1).optional(),
+  label: z.string().trim().min(1, "Give each field a label.").max(80),
+  type: z.enum(DOCUMENT_FIELD_TYPES),
+  required: z.boolean(),
+  options: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+});
+
 const documentTypeSchema = z.object({
   id: z.string().min(1).optional(),
   name: z.string().trim().min(2, "Give the document a name.").max(120),
@@ -83,6 +92,7 @@ const documentTypeSchema = z.object({
   fee: z.coerce.number().min(0, "Fee can't be negative.").max(100000),
   turnaroundDays: z.coerce.number().int().min(0).max(60),
   active: z.boolean(),
+  fields: z.array(documentFieldSchema).max(20).optional(),
 });
 
 /** Create or update a requestable document type. */
@@ -101,6 +111,28 @@ export async function saveDocumentType(
   }
   const { id, name, description, fee, turnaroundDays, active } = parsed.data;
 
+  // Normalize the custom fields: stamp an id on new fields, keep options only for
+  // dropdowns, and reject a dropdown with no choices to fill in.
+  const fields = (parsed.data.fields ?? []).map((field) => ({
+    id: field.id ?? crypto.randomUUID(),
+    label: field.label,
+    type: field.type,
+    required: field.required,
+    options:
+      field.type === "select"
+        ? (field.options ?? []).map((o) => o.trim()).filter(Boolean)
+        : [],
+  }));
+  const emptyDropdown = fields.find(
+    (field) => field.type === "select" && field.options.length === 0,
+  );
+  if (emptyDropdown) {
+    return {
+      ok: false,
+      error: `Add at least one choice to the "${emptyDropdown.label}" dropdown.`,
+    };
+  }
+
   // Names must be unique; surface a friendly message instead of a DB error.
   const clash = await prisma.documentType.findFirst({
     where: { name: { equals: name, mode: "insensitive" }, id: id ? { not: id } : undefined },
@@ -116,6 +148,7 @@ export async function saveDocumentType(
     fee,
     turnaroundDays,
     active,
+    fields,
     updatedById: auth.userId,
   };
 

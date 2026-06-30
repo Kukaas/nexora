@@ -11,7 +11,10 @@ import {
   type PaymentMethodDTO,
   type PaymentSummary,
 } from "@/lib/payments";
-import type { DocumentRequestDTO } from "@/lib/documents";
+import {
+  parseDocumentFieldValues,
+  type DocumentRequestDTO,
+} from "@/lib/documents";
 
 /**
  * Server-side read models for the treasurer screens. Everything returned here
@@ -114,6 +117,7 @@ export async function getDocumentRequests(
     reviewedByName: reviewerName(row.reviewedBy),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     releasedAt: row.releasedAt?.toISOString() ?? null,
+    fieldValues: parseDocumentFieldValues(row.fieldValues),
     createdAt: row.createdAt.toISOString(),
   }));
 }
@@ -146,6 +150,7 @@ export async function getDocumentRequestById(
     reviewedByName: reviewerName(row.reviewedBy),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     releasedAt: row.releasedAt?.toISOString() ?? null,
+    fieldValues: parseDocumentFieldValues(row.fieldValues),
     createdAt: row.createdAt.toISOString(),
   };
 }

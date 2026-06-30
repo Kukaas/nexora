@@ -177,6 +177,8 @@ model DocumentType {
   turnaroundDays                   Int              @default(2) @map("turnaround_days")
   active                           Boolean          @default(true)
 
+  fields                           Json             @default("[]")
+
   requests                         DocumentRequest[]
 
   updatedById                      String?          @map("updated_by_id")
@@ -197,6 +199,8 @@ model DocumentRequest {
   documentType                     DocumentType?    @relation(fields: [documentTypeId], references: [id], onDelete: SetNull)
   documentName                     String           @map("document_name")
   fee                              Decimal          @db.Decimal(10, 2)
+
+  fieldValues                      Json             @default("[]") @map("field_values")
 
   purpose                          String?
 

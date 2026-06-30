@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { getDocumentRequestById } from "@/lib/treasurer-data";
-import { requestHasPayment } from "@/lib/documents";
+import { formatFieldValue, requestHasPayment } from "@/lib/documents";
 import {
   formatDateTime,
   formatPeso,
@@ -67,6 +67,11 @@ export default async function TreasurerDocumentFeePage({
           <Row label="Resident">{request.requesterEmail}</Row>
         )}
         {request.purpose && <Row label="Purpose">{request.purpose}</Row>}
+        {request.fieldValues.map((field, i) => (
+          <Row key={i} label={field.label}>
+            {formatFieldValue(field)}
+          </Row>
+        ))}
         {hasPayment && request.paymentReference && (
           <Row label="Payment ref.">
             <span className="font-mono">{request.paymentReference}</span>
