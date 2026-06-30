@@ -32,6 +32,20 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DataPagination,
+  DEFAULT_PAGE_SIZE_OPTIONS,
+  TableCard,
+  useClientPagination,
+} from "@/components/ui/data-table";
 import { AnnouncementCategory } from "@/app/generated/prisma/enums";
 import {
   CATEGORY_LABELS,
@@ -53,6 +67,7 @@ export function AnnouncementsManager({
 }) {
   const router = useRouter();
   const [editor, setEditor] = useState<EditorState>({ mode: "closed" });
+  const pg = useClientPagination(announcements, 10);
 
   return (
     <div className="flex flex-col gap-5">
@@ -81,47 +96,136 @@ export function AnnouncementsManager({
           </Button>
         </Empty>
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-4xl border border-border bg-card">
-          {announcements.map((a) => (
-            <li key={a.id} className="flex items-start gap-4 px-4 py-4 sm:px-5">
-              <div className="min-w-0 flex-1">
-                <div className="mb-1 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex h-6 items-center rounded-3xl border border-border px-2.5 text-xs font-medium text-muted-foreground">
-                    {CATEGORY_LABELS[a.category]}
-                  </span>
-                  {a.pinned && (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground">
-                      <Pin className="size-3" aria-hidden />
-                      Pinned
-                    </span>
-                  )}
-                  {!a.published && (
-                    <span className="inline-flex h-6 items-center rounded-3xl bg-muted px-2.5 text-xs font-medium text-muted-foreground">
-                      Draft
-                    </span>
-                  )}
-                  <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-                    {formatDate(a.createdAt)}
-                  </span>
-                </div>
-                <p className="truncate font-medium">{a.title}</p>
-                <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
-                  {a.body}
-                </p>
-              </div>
+        <>
+          {/* Table — tablet and up */}
+          <TableCard className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-11 ps-5 text-xs font-medium tracking-wide text-muted-foreground">
+                    Announcement
+                  </TableHead>
+                  <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
+                    Category
+                  </TableHead>
+                  <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
+                    Status
+                  </TableHead>
+                  <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
+                    Posted
+                  </TableHead>
+                  <TableHead className="h-11 w-10 pe-5" aria-label="Edit" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pg.visible.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="ps-5">
+                      <div className="flex items-center gap-1.5">
+                        {a.pinned && (
+                          <Pin
+                            className="size-3.5 shrink-0 text-accent-foreground"
+                            aria-label="Pinned"
+                          />
+                        )}
+                        <span className="font-medium">{a.title}</span>
+                      </div>
+                      <p className="mt-0.5 line-clamp-1 max-w-md text-sm text-muted-foreground">
+                        {a.body}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex h-6 items-center rounded-3xl border border-border px-2.5 text-xs font-medium text-muted-foreground">
+                        {CATEGORY_LABELS[a.category]}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {a.published ? (
+                        <span className="text-sm text-muted-foreground">
+                          Published
+                        </span>
+                      ) : (
+                        <span className="inline-flex h-6 items-center rounded-3xl bg-muted px-2.5 text-xs font-medium text-muted-foreground">
+                          Draft
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground tabular-nums">
+                      {formatDate(a.createdAt)}
+                    </TableCell>
+                    <TableCell className="pe-5 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          setEditor({ mode: "edit", announcement: a })
+                        }
+                        aria-label={`Edit ${a.title}`}
+                      >
+                        <Pencil />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableCard>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setEditor({ mode: "edit", announcement: a })}
-                aria-label={`Edit ${a.title}`}
-                className="shrink-0"
-              >
-                <Pencil />
-              </Button>
-            </li>
-          ))}
-        </ul>
+          {/* Stacked rows — phones */}
+          <ul className="divide-y divide-border overflow-hidden rounded-4xl border border-border bg-card md:hidden">
+            {pg.visible.map((a) => (
+              <li key={a.id} className="flex items-start gap-4 px-4 py-4 sm:px-5">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <span className="inline-flex h-6 items-center rounded-3xl border border-border px-2.5 text-xs font-medium text-muted-foreground">
+                      {CATEGORY_LABELS[a.category]}
+                    </span>
+                    {a.pinned && (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground">
+                        <Pin className="size-3" aria-hidden />
+                        Pinned
+                      </span>
+                    )}
+                    {!a.published && (
+                      <span className="inline-flex h-6 items-center rounded-3xl bg-muted px-2.5 text-xs font-medium text-muted-foreground">
+                        Draft
+                      </span>
+                    )}
+                    <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
+                      {formatDate(a.createdAt)}
+                    </span>
+                  </div>
+                  <p className="truncate font-medium">{a.title}</p>
+                  <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+                    {a.body}
+                  </p>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setEditor({ mode: "edit", announcement: a })}
+                  aria-label={`Edit ${a.title}`}
+                  className="shrink-0"
+                >
+                  <Pencil />
+                </Button>
+              </li>
+            ))}
+          </ul>
+
+          <DataPagination
+            page={pg.page}
+            pageCount={pg.pageCount}
+            pageSize={pg.pageSize}
+            pageSizeOptions={DEFAULT_PAGE_SIZE_OPTIONS}
+            total={pg.total}
+            from={pg.from}
+            to={pg.to}
+            onPageChange={pg.setPage}
+            onPageSizeChange={pg.setPageSize}
+          />
+        </>
       )}
 
       <AnnouncementEditor

@@ -11,7 +11,7 @@ export default async function SecretaryDocumentsPage() {
   const types = await getDocumentTypes();
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8">
+    <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">
           Document catalog

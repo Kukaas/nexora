@@ -2,13 +2,7 @@
 
 import { useCallback, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Inbox,
-  Loader,
-} from "lucide-react";
+import { CalendarDays, ChevronRight, Inbox } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -18,14 +12,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -34,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataPagination, TableCard } from "@/components/ui/data-table";
 import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
 import {
   requestHasPayment,
@@ -271,7 +258,7 @@ export function RequestsTable({
             )}
           >
             {/* Table — tablet and up */}
-            <div className="hidden overflow-hidden rounded-4xl border border-border bg-card md:block">
+            <TableCard className="hidden md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -345,7 +332,7 @@ export function RequestsTable({
                   })}
                 </TableBody>
               </Table>
-            </div>
+            </TableCard>
 
             {/* Stacked rows — phones */}
             <ul className="divide-y divide-border overflow-hidden rounded-4xl border border-border bg-card md:hidden">
@@ -384,74 +371,18 @@ export function RequestsTable({
             </ul>
           </div>
 
-          {/* Pagination */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <span className="hidden text-sm text-muted-foreground sm:inline">
-                  Rows per page
-                </span>
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(v) => handlePageSize(Number(v))}
-                >
-                  <SelectTrigger size="sm" aria-label="Rows per page">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAGE_SIZE_OPTIONS.map((n) => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <p
-                className="flex items-center gap-2 text-sm text-muted-foreground"
-                aria-live="polite"
-              >
-                {pending && (
-                  <Loader className="size-3.5 animate-spin" aria-hidden />
-                )}
-                <span>
-                  Showing{" "}
-                  <span className="font-medium text-foreground tabular-nums">
-                    {from}–{to}
-                  </span>{" "}
-                  of{" "}
-                  <span className="font-medium text-foreground tabular-nums">
-                    {total}
-                  </span>
-                </span>
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="hidden text-sm text-muted-foreground tabular-nums sm:inline">
-                Page {page} of {pageCount}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => goTo(page - 1)}
-                disabled={page <= 1 || pending}
-              >
-                <ChevronLeft data-icon="inline-start" aria-hidden />
-                Prev
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => goTo(page + 1)}
-                disabled={page >= pageCount || pending}
-              >
-                Next
-                <ChevronRight data-icon="inline-end" aria-hidden />
-              </Button>
-            </div>
-          </div>
+          <DataPagination
+            page={page}
+            pageCount={pageCount}
+            pageSize={pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            total={total}
+            from={from}
+            to={to}
+            pending={pending}
+            onPageChange={goTo}
+            onPageSizeChange={handlePageSize}
+          />
         </>
       )}
     </section>
