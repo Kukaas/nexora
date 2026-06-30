@@ -2,8 +2,10 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
+  AlertCircle,
   ArrowLeft,
   Banknote,
   CalendarIcon,
@@ -42,7 +44,26 @@ import {
   type DocumentField,
   type DocumentTypeDTO,
 } from "@/lib/documents";
-import { submitDocumentRequest } from "@/lib/document-actions";
+import {
+  submitDocumentRequest,
+  updateDocumentRequest,
+} from "@/lib/document-actions";
+
+/** Prefill + target for editing an existing request, instead of creating one. */
+export type RequestEditContext = {
+  requestId: string;
+  purpose: string;
+  answers: Record<string, string>;
+  method: PaymentMethodType | null;
+  paymentReference: string;
+  existingProof: string | null;
+  /** The rejection reason, shown so the resident knows what to fix. */
+  note: string | null;
+  /** True when the request was REJECTED, so the form becomes a resubmit. */
+  wasRejected: boolean;
+  /** The resident's existing reply, prefilled when resubmitting. */
+  resubmitNote: string;
+};
 
 const peso = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -50,6 +71,10 @@ const peso = new Intl.NumberFormat("en-PH", {
   minimumFractionDigits: 2,
 });
 const formatPeso = (n: number) => peso.format(n);
+
+/** Keep proof screenshots small enough to upload reliably. Mirrors the server. */
+const MAX_PROOF_MB = 3;
+const MAX_PROOF_BYTES = MAX_PROOF_MB * 1024 * 1024;
 
 const METHOD_ICON: Record<PaymentMethodType, LucideIcon> = {
   [PaymentMethodType.GCASH]: QrCode,
@@ -62,25 +87,36 @@ export function RequestForm({
   methods,
   uploadsEnabled,
   backHref,
+  editing,
 }: {
   type: DocumentTypeDTO;
   methods: PaymentMethodDTO[];
   uploadsEnabled: boolean;
-  /** The resident portal to return to after submitting or cancelling. */
+  /** Where to return to after submitting or cancelling. */
   backHref: string;
+  /** When set, the form edits this request instead of creating a new one. */
+  editing?: RequestEditContext;
 }) {
+  const router = useRouter();
   const refId = useId();
   const purposeId = useId();
+  const resubmitId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
+  const wasRejected = editing?.wasRejected ?? false;
 
   // `null` means "no explicit pick yet" and falls back to the first channel, so
   // we never have to sync a default into state from an effect.
   const [pickedMethod, setPickedMethod] = useState<PaymentMethodType | null>(
-    null,
+    editing?.method ?? null,
   );
-  const [purpose, setPurpose] = useState("");
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [reference, setReference] = useState("");
+  const [purpose, setPurpose] = useState(editing?.purpose ?? "");
+  const [answers, setAnswers] = useState<Record<string, string>>(
+    editing?.answers ?? {},
+  );
+  const [resubmitNote, setResubmitNote] = useState(
+    editing?.resubmitNote ?? "",
+  );
+  const [reference, setReference] = useState(editing?.paymentReference ?? "");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -115,8 +151,16 @@ export function RequestForm({
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const next = e.target.files?.[0] ?? null;
+    // Reset the input so picking the same file again still fires onChange.
+    if (fileRef.current) fileRef.current.value = "";
     if (next && !next.type.startsWith("image/")) {
       toast.error("The screenshot must be an image file.");
+      return;
+    }
+    if (next && next.size > MAX_PROOF_BYTES) {
+      toast.error(
+        `That image is ${(next.size / 1024 / 1024).toFixed(1)} MB. Keep it under ${MAX_PROOF_MB} MB.`,
+      );
       return;
     }
     setFile(next);
@@ -143,14 +187,15 @@ export function RequestForm({
         toast.error("Enter the reference number from your payment.");
         return;
       }
-      if (isEwallet && !file) {
+      // When editing, a proof already on file counts — only a brand-new request
+      // (or one with no proof yet) must attach a screenshot.
+      if (isEwallet && !file && !editing?.existingProof) {
         toast.error("Attach a screenshot of your payment.");
         return;
       }
     }
     setSubmitting(true);
     const fd = new FormData();
-    fd.set("documentTypeId", type.id);
     if (purpose.trim()) fd.set("purpose", purpose.trim());
     if (type.fields.length > 0) fd.set("fields", JSON.stringify(answers));
     if (!isFree && method) {
@@ -160,6 +205,25 @@ export function RequestForm({
         if (file) fd.set("proof", file);
       }
     }
+
+    if (editing) {
+      fd.set("requestId", editing.requestId);
+      if (wasRejected && resubmitNote.trim()) {
+        fd.set("resubmitNote", resubmitNote.trim());
+      }
+      const result = await updateDocumentRequest(fd);
+      setSubmitting(false);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      toast.success(wasRejected ? "Request resubmitted." : "Request updated.");
+      router.push(backHref);
+      router.refresh();
+      return;
+    }
+
+    fd.set("documentTypeId", type.id);
     const result = await submitDocumentRequest(fd);
     setSubmitting(false);
 
@@ -195,7 +259,11 @@ export function RequestForm({
         disabled={submitting || noChannels}
       >
         {submitting && <Spinner />}
-        Submit request
+        {editing
+          ? wasRejected
+            ? "Resubmit request"
+            : "Save changes"
+          : "Submit request"}
       </Button>
     </div>
   );
@@ -208,6 +276,28 @@ export function RequestForm({
           {isFree ? "Free" : formatPeso(type.fee)}
         </span>
       </div>
+
+      {wasRejected && (
+        <div className="mt-5 flex flex-col gap-2">
+          <Label htmlFor={resubmitId}>
+            What did you change?{" "}
+            <span className="font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </Label>
+          <Textarea
+            id={resubmitId}
+            value={resubmitNote}
+            onChange={(e) => setResubmitNote(e.target.value)}
+            placeholder="e.g. I attached the correct screenshot and the amount now matches the fee."
+            rows={3}
+            disabled={submitting}
+          />
+          <p className="text-xs text-muted-foreground">
+            A short note for the reviewer, sent back with your request.
+          </p>
+        </div>
+      )}
 
       {type.fields.length > 0 && (
         <div className="mt-5 flex flex-col gap-4">
@@ -253,12 +343,14 @@ export function RequestForm({
         className="inline-flex items-center gap-1.5 rounded-2xl text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/30"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Back to portal
+        {editing ? "Back to request" : "Back to portal"}
       </Link>
 
       <header className="mt-4">
         <h1 className="text-2xl font-semibold tracking-tight text-balance">
-          {type.name}
+          {editing
+            ? `${wasRejected ? "Resubmit" : "Edit"} ${type.name}`
+            : type.name}
         </h1>
         {type.description && (
           <p className="mt-1 max-w-prose text-sm text-muted-foreground text-pretty">
@@ -269,6 +361,16 @@ export function RequestForm({
           {turnaroundLabel(type.turnaroundDays)}
         </p>
       </header>
+
+      {editing?.note && (
+        <div className="mt-4 flex gap-3 rounded-3xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <div>
+            <p className="font-medium">Sent back to fix</p>
+            <p className="mt-0.5 text-pretty">{editing.note}</p>
+          </div>
+        </div>
+      )}
 
       {/* Free documents and the "no online payment" fallback have nothing to pay,
           so they stay a single narrow column. A paid request opens into a
@@ -359,30 +461,44 @@ export function RequestForm({
                   className="sr-only"
                   aria-label="Payment screenshot"
                 />
-                {preview ? (
+                {preview || editing?.existingProof ? (
                   <div className="flex flex-col items-center gap-3">
                     {/* Contain, don't crop: a payment screenshot is usually a
                         tall receipt, so object-cover would hide most of it. */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={preview}
+                      src={preview ?? editing?.existingProof ?? ""}
                       alt="Your payment screenshot"
                       className="h-40 w-auto max-w-[10rem] rounded-2xl border border-border bg-muted object-contain"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setFile(null);
-                        showBlob(null);
-                        if (fileRef.current) fileRef.current.value = "";
-                      }}
-                      disabled={submitting}
-                    >
-                      <Trash2 className="text-destructive" />
-                      Remove
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => fileRef.current?.click()}
+                        disabled={submitting || !uploadsEnabled}
+                      >
+                        <ImageUp />
+                        Replace
+                      </Button>
+                      {preview && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setFile(null);
+                            showBlob(null);
+                            if (fileRef.current) fileRef.current.value = "";
+                          }}
+                          disabled={submitting}
+                        >
+                          <Trash2 className="text-destructive" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <button

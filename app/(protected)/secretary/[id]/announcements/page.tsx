@@ -7,7 +7,12 @@ export const metadata: Metadata = {
   title: "Announcements · Secretary · Barangay Libtangin",
 };
 
-export default async function SecretaryAnnouncementsPage() {
+export default async function SecretaryAnnouncementsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const announcements = await getAnnouncements();
 
   return (
@@ -21,7 +26,10 @@ export default async function SecretaryAnnouncementsPage() {
       </header>
 
       <div className="mt-8">
-        <AnnouncementsManager announcements={announcements} />
+        <AnnouncementsManager
+          announcements={announcements}
+          basePath={`/secretary/${id}/announcements`}
+        />
       </div>
     </div>
   );

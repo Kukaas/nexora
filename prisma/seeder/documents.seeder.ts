@@ -83,19 +83,25 @@ const RESIDENTS = [
   { email: "apolinario.mabini@example.com", firstName: "Apolinario", lastName: "Mabini" },
 ];
 
+// `date` is the day the event/advisory takes effect (stored at UTC midnight,
+// read back in Asia/Manila). Ongoing notices leave it null.
+const eventDate = (iso: string) => new Date(`${iso}T00:00:00Z`);
+
 const ANNOUNCEMENTS = [
   {
-    title: "Scheduled water interruption, June 28",
+    title: "Scheduled water interruption",
     category: AnnouncementCategory.ADVISORY,
     pinned: true,
     place: "Sitio Maligaya · Riverside",
+    date: eventDate("2026-06-28"),
     body: "Maynilad will shut off supply for line maintenance from 10:00 PM Saturday to 4:00 AM Sunday. Affected: Sitio Maligaya, Riverside, and the area around the covered court. Store enough water for the night and early morning. Service resumes gradually, so low pressure right after 4:00 AM is normal.",
   },
   {
-    title: "Barangay general assembly, July 5",
+    title: "Barangay general assembly",
     category: AnnouncementCategory.GOVERNANCE,
     pinned: false,
     place: "Barangay covered court",
+    date: eventDate("2026-07-05"),
     body: "Quarterly assembly at the covered court, 8:00 AM. The budget update and the new waste plan will be presented. One representative per household is enough to be counted present. Bring questions for the open forum after the budget report.",
   },
   {
@@ -103,6 +109,7 @@ const ANNOUNCEMENTS = [
     category: AnnouncementCategory.HEALTH,
     pinned: false,
     place: "Barangay health center",
+    date: eventDate("2026-07-02"),
     body: "Bring cats and dogs to the health center on July 2, 8:00 AM to 12:00 NN. No fee, first come first served. Pets should be leashed or in a carrier. Supplies are limited to 200 doses for the day.",
   },
   {
@@ -110,6 +117,7 @@ const ANNOUNCEMENTS = [
     category: AnnouncementCategory.ASSISTANCE,
     pinned: false,
     place: "Barangay hall, second floor",
+    date: eventDate("2026-06-30"),
     body: "Social pension for the second quarter will be released June 30 to July 1 at the barangay hall. Bring a valid ID and your OSCA booklet. Beneficiaries who cannot come in person may send an authorized representative with a signed authorization letter and both IDs.",
   },
   {
@@ -117,13 +125,15 @@ const ANNOUNCEMENTS = [
     category: AnnouncementCategory.ADVISORY,
     pinned: false,
     place: null,
+    date: null,
     body: "Starting this week, biodegradable waste is collected Mondays and Thursdays; recyclables on Saturdays. Please segregate at source. Collection starts at 6:00 AM, so set out bins the night before.",
   },
   {
-    title: "Barangay fiesta and fun run, July 12",
+    title: "Barangay fiesta and fun run",
     category: AnnouncementCategory.EVENTS,
     pinned: false,
     place: "Barangay plaza",
+    date: eventDate("2026-07-12"),
     body: "Registration is open for the 5K fun run and the inter-sitio basketball league. Fun run gun start is 5:30 AM at the plaza; registration is free with a claimable shirt for the first 300 runners. Team rosters are due July 8.",
   },
 ];
@@ -262,7 +272,8 @@ async function seed() {
           method: PaymentMethodType.GCASH,
           paymentReference: "0917 002 3398",
           proofImage: proof("doc-andres"),
-          status: DocumentRequestStatus.READY,
+          orNumber: "0041902",
+          status: DocumentRequestStatus.CLAIMED,
           requesterId: andres.id,
           requesterName: fullName(andres),
           reviewedAt: daysAgo(5),

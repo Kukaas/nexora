@@ -41,6 +41,7 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: DocumentRequestStatus.PROCESSING, label: "To prepare" },
   { value: DocumentRequestStatus.PENDING, label: "Awaiting payment" },
   { value: DocumentRequestStatus.READY, label: "Ready" },
+  { value: DocumentRequestStatus.CLAIMED, label: "Claimed" },
   { value: DocumentRequestStatus.REJECTED, label: "Rejected" },
   { value: "ALL", label: "All" },
 ];
@@ -405,6 +406,11 @@ function EmptyFilterState({ filter }: { filter: Filter }) {
       title: "No documents ready",
       description:
         "Documents you mark ready show up here for residents to claim.",
+    },
+    [DocumentRequestStatus.CLAIMED]: {
+      title: "Nothing claimed yet",
+      description:
+        "Once residents pick up their ready documents, the claimed ones land here.",
     },
     [DocumentRequestStatus.REJECTED]: {
       title: "No rejected requests",

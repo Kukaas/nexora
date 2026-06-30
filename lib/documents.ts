@@ -75,14 +75,21 @@ export type DocumentTypeDTO = {
 export type DocumentRequestDTO = {
   id: string;
   referenceNumber: string;
+  /** The catalog type this came from, or null if that type was deleted. */
+  documentTypeId: string | null;
   documentName: string;
   fee: number;
   purpose: string | null;
   method: PaymentMethodType;
   paymentReference: string | null;
   proofImage: string | null;
+  /** The Official Receipt number the treasurer recorded on verifying. */
+  orNumber: string | null;
   status: DocumentRequestStatus;
+  /** The reviewer's reason for sending the request back. */
   note: string | null;
+  /** The resident's reply when they fix and resubmit a rejected request. */
+  resubmitNote: string | null;
   requesterName: string;
   requesterEmail: string | null;
   reviewedByName: string | null;
@@ -134,6 +141,8 @@ export type AnnouncementDTO = {
   pinned: boolean;
   published: boolean;
   place: string | null;
+  /** When the event/advisory happens (ISO), distinct from `createdAt`; null if ongoing. */
+  date: string | null;
   authorName: string | null;
   createdAt: string;
 };
@@ -236,6 +245,7 @@ export const REQUEST_STATUS_LABELS: Record<DocumentRequestStatus, string> = {
   [DocumentRequestStatus.PENDING]: "Pending",
   [DocumentRequestStatus.PROCESSING]: "Processing",
   [DocumentRequestStatus.READY]: "Ready",
+  [DocumentRequestStatus.CLAIMED]: "Claimed",
   [DocumentRequestStatus.REJECTED]: "Rejected",
 };
 

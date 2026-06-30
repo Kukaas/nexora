@@ -36,14 +36,17 @@ function toRequestDTO(row: RequestRow): DocumentRequestDTO {
   return {
     id: row.id,
     referenceNumber: row.referenceNumber,
+    documentTypeId: row.documentTypeId,
     documentName: row.documentName,
     fee: Number(row.fee),
     purpose: row.purpose,
     method: row.method,
     paymentReference: row.paymentReference,
     proofImage: row.proofImage,
+    orNumber: row.orNumber,
     status: row.status,
     note: row.note,
+    resubmitNote: row.resubmitNote,
     requesterName: row.requesterName,
     requesterEmail: row.requester?.email ?? null,
     reviewedByName: personName(row.reviewedBy),
@@ -122,6 +125,7 @@ export async function getRequestStatusCounts(
     [DocumentRequestStatus.PENDING]: 0,
     [DocumentRequestStatus.PROCESSING]: 0,
     [DocumentRequestStatus.READY]: 0,
+    [DocumentRequestStatus.CLAIMED]: 0,
     [DocumentRequestStatus.REJECTED]: 0,
   };
   for (const group of grouped) {
@@ -210,6 +214,19 @@ export async function getDocumentTypeById(
   };
 }
 
+/** A single announcement for the secretary editor, or null if missing. */
+export async function getAnnouncementById(
+  id: string,
+): Promise<AnnouncementDTO | null> {
+  const row = await prisma.announcement.findUnique({
+    where: { id },
+    include: {
+      author: { select: { name: true, firstName: true, lastName: true } },
+    },
+  });
+  return row ? toAnnouncementDTO(row) : null;
+}
+
 export async function getAnnouncements(): Promise<AnnouncementDTO[]> {
   const rows = await prisma.announcement.findMany({
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
@@ -229,6 +246,7 @@ export function toAnnouncementDTO(row: {
   pinned: boolean;
   published: boolean;
   place: string | null;
+  date: Date | null;
   createdAt: Date;
   author: { name: string | null; firstName: string | null; lastName: string | null } | null;
 }): AnnouncementDTO {
@@ -240,6 +258,7 @@ export function toAnnouncementDTO(row: {
     pinned: row.pinned,
     published: row.published,
     place: row.place,
+    date: row.date?.toISOString() ?? null,
     authorName: personName(row.author),
     createdAt: row.createdAt.toISOString(),
   };

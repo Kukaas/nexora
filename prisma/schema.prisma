@@ -207,9 +207,11 @@ model DocumentRequest {
   method                           PaymentMethodType
   paymentReference                 String?          @map("payment_reference")
   proofImage                       String?          @map("proof_image")
+  orNumber                         String?          @map("or_number")
 
   status                           DocumentRequestStatus @default(PENDING)
   note                             String?
+  resubmitNote                     String?          @map("resubmit_note")
 
   requesterId                      String           @map("requester_id")
   requester                        User             @relation("DocumentRequester", fields: [requesterId], references: [id], onDelete: Cascade)
@@ -237,6 +239,7 @@ model Announcement {
   pinned                           Boolean           @default(false)
   published                        Boolean           @default(true)
   place                            String?
+  date                             DateTime?         @map("date")
 
   authorId                         String?           @map("author_id")
   author                           User?             @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
@@ -252,6 +255,7 @@ enum DocumentRequestStatus {
   PENDING
   PROCESSING
   READY
+  CLAIMED
   REJECTED
 }
 

@@ -20,12 +20,10 @@ export type TreasurerUser = {
 
 export function TreasurerShell({
   user,
-  pendingCount,
   docFeesPendingCount,
   children,
 }: {
   user: TreasurerUser;
-  pendingCount: number;
   docFeesPendingCount: number;
   children: React.ReactNode;
 }) {
@@ -34,7 +32,6 @@ export function TreasurerShell({
       <SidebarProvider>
         <TreasurerSidebar
           user={user}
-          pendingCount={pendingCount}
           docFeesPendingCount={docFeesPendingCount}
         />
         <SidebarInset>

@@ -6,8 +6,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { isResidencyVerified } from "@/lib/profile";
-import { uploadImage } from "@/lib/cloudinary";
-import { PaymentMethodType } from "@/app/generated/prisma/enums";
+import { deleteCloudinaryImage, uploadImage } from "@/lib/cloudinary";
+import {
+  DocumentRequestStatus,
+  PaymentMethodType,
+} from "@/app/generated/prisma/enums";
 import {
   parseDocumentFields,
   type DocumentFieldValue,
@@ -17,7 +20,7 @@ export type SubmitResult =
   | { ok: true; referenceNumber: string }
   | { ok: false; error: string };
 
-const MAX_PROOF_BYTES = 5 * 1024 * 1024;
+const MAX_PROOF_BYTES = 3 * 1024 * 1024;
 
 const submitSchema = z.object({
   documentTypeId: z.string().min(1),
@@ -139,7 +142,7 @@ export async function submitDocumentRequest(
         return { ok: false, error: "The proof must be an image file." };
       }
       if (file.size > MAX_PROOF_BYTES) {
-        return { ok: false, error: "That image is too large. Keep it under 5 MB." };
+        return { ok: false, error: "That image is too large. Keep it under 3 MB." };
       }
       try {
         proofImage = await uploadImage(file, "nexora/document-proof");
@@ -186,6 +189,201 @@ export async function submitDocumentRequest(
 
   revalidatePath(`/resident/${user.id}`);
   return { ok: true, referenceNumber };
+}
+
+export type UpdateResult = { ok: true } | { ok: false; error: string };
+
+const updateSchema = z.object({
+  requestId: z.string().min(1),
+  method: z.enum(["GCASH", "MAYA", "CASH"]).optional(),
+  paymentReference: z.string().trim().max(80).optional(),
+  purpose: z.string().trim().max(300).optional(),
+  // The resident's reply when resubmitting a rejected request.
+  resubmitNote: z.string().trim().max(500).optional(),
+});
+
+/**
+ * A resident edits one of their own requests while it's still PENDING (awaiting
+ * verification) or REJECTED (sent back). They can change the purpose, the custom
+ * field answers, and the payment. Editing resubmits it: the request returns to
+ * PENDING and any rejection note is cleared. The fee and document name stay the
+ * snapshot from when it was first requested.
+ */
+export async function updateDocumentRequest(
+  formData: FormData,
+): Promise<UpdateResult> {
+  const session = await getSession();
+  if (!session) {
+    return { ok: false, error: "Your session has expired. Sign in again." };
+  }
+  if (!(await isResidencyVerified(session.user.id))) {
+    return {
+      ok: false,
+      error: "Your account is still being verified.",
+    };
+  }
+
+  const parsed = updateSchema.safeParse({
+    requestId: formData.get("requestId"),
+    method: formData.get("method") ?? undefined,
+    paymentReference: emptyToUndefined(formData.get("paymentReference")),
+    purpose: emptyToUndefined(formData.get("purpose")),
+    resubmitNote: emptyToUndefined(formData.get("resubmitNote")),
+  });
+  if (!parsed.success) {
+    return { ok: false, error: "Please check your request and try again." };
+  }
+  const { requestId, method, paymentReference, purpose, resubmitNote } =
+    parsed.data;
+
+  // The request must exist, belong to the resident, and still be editable.
+  const existing = await prisma.documentRequest.findFirst({
+    where: { id: requestId, requesterId: session.user.id },
+    select: {
+      id: true,
+      fee: true,
+      status: true,
+      documentTypeId: true,
+      proofImage: true,
+    },
+  });
+  if (!existing) {
+    return { ok: false, error: "That request no longer exists." };
+  }
+  if (
+    existing.status !== DocumentRequestStatus.PENDING &&
+    existing.status !== DocumentRequestStatus.REJECTED
+  ) {
+    return {
+      ok: false,
+      error: "This request is already being processed and can't be edited.",
+    };
+  }
+  // The resident's reply only applies when they're fixing a rejected request.
+  const wasRejected = existing.status === DocumentRequestStatus.REJECTED;
+
+  // Validate the custom field answers against the document's current fields.
+  const answers = readFieldAnswers(formData.get("fields"));
+  const docType = existing.documentTypeId
+    ? await prisma.documentType.findUnique({
+        where: { id: existing.documentTypeId },
+        select: { fields: true },
+      })
+    : null;
+  const fields = parseDocumentFields(docType?.fields);
+  const fieldValues: DocumentFieldValue[] = [];
+  for (const field of fields) {
+    const value = (answers[field.id] ?? "").trim();
+    if (field.required && !value) {
+      return { ok: false, error: `Please fill in "${field.label}".` };
+    }
+    if (
+      value &&
+      field.type === "select" &&
+      field.options.length > 0 &&
+      !field.options.includes(value)
+    ) {
+      return { ok: false, error: `Choose a valid option for "${field.label}".` };
+    }
+    fieldValues.push({ label: field.label, type: field.type, value });
+  }
+
+  // Fee is the snapshot from the original request, so a later price change never
+  // rewrites what the resident owes here.
+  const isFree = Number(existing.fee) <= 0;
+  let methodType: PaymentMethodType = PaymentMethodType.CASH;
+  let storedReference: string | null = null;
+  let proofImage: string | null = existing.proofImage;
+
+  if (!isFree) {
+    if (!method) {
+      return { ok: false, error: "Choose how you'll pay." };
+    }
+    methodType = method as PaymentMethodType;
+    const isEwallet = methodType !== PaymentMethodType.CASH;
+
+    const channel = await prisma.paymentMethod.findUnique({
+      where: { type: methodType },
+      select: { enabled: true },
+    });
+    if (!channel?.enabled) {
+      return {
+        ok: false,
+        error: "That payment method isn't available right now.",
+      };
+    }
+
+    if (isEwallet) {
+      if (!paymentReference) {
+        return {
+          ok: false,
+          error: "Enter the reference number from your payment.",
+        };
+      }
+      // A new screenshot replaces the old one; with none attached we keep the
+      // proof already on file, so they don't have to re-upload an unchanged one.
+      const file = formData.get("proof");
+      if (file instanceof File && file.size > 0) {
+        if (!file.type.startsWith("image/")) {
+          return { ok: false, error: "The proof must be an image file." };
+        }
+        if (file.size > MAX_PROOF_BYTES) {
+          return {
+            ok: false,
+            error: "That image is too large. Keep it under 3 MB.",
+          };
+        }
+        try {
+          proofImage = await uploadImage(file, "nexora/document-proof");
+        } catch (error) {
+          console.error("Proof upload failed", error);
+          return {
+            ok: false,
+            error: "We couldn't upload your screenshot. Try again in a moment.",
+          };
+        }
+      } else if (!proofImage) {
+        return { ok: false, error: "Attach a screenshot of your payment." };
+      }
+      storedReference = paymentReference;
+    } else {
+      // Switched to cash: it's settled in person, so drop e-wallet artifacts.
+      storedReference = null;
+      proofImage = null;
+    }
+  } else {
+    storedReference = null;
+    proofImage = null;
+  }
+
+  await prisma.documentRequest.update({
+    where: { id: existing.id },
+    data: {
+      purpose: purpose ?? null,
+      fieldValues,
+      method: methodType,
+      paymentReference: storedReference,
+      proofImage,
+      // Resubmitted for verification: back to PENDING, rejection cleared. Keep
+      // the resident's reply only when they were actually fixing a rejection.
+      status: DocumentRequestStatus.PENDING,
+      note: null,
+      resubmitNote: wasRejected ? (resubmitNote ?? null) : null,
+      reviewedAt: null,
+      reviewedById: null,
+    },
+  });
+
+  // The old screenshot is now unreferenced (replaced with a new one, or dropped
+  // when switching to cash/free) — clean it up. Best-effort; never blocks.
+  if (existing.proofImage && existing.proofImage !== proofImage) {
+    await deleteCloudinaryImage(existing.proofImage);
+  }
+
+  revalidatePath(`/resident/${session.user.id}`);
+  revalidatePath(`/resident/${session.user.id}/requests`);
+  revalidatePath(`/resident/${session.user.id}/requests/${existing.id}`);
+  return { ok: true };
 }
 
 /**

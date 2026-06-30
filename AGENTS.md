@@ -15,3 +15,9 @@ Why: pages stay server-rendered, each page can export `metadata`, and the client
 Inside the authenticated areas (resident / secretary / treasurer), creating or editing a record is its own route that takes the whole page — **never a dialog/modal.** The list links to it (`Add` → `…/new`, the row's edit → `…/[id]/edit`); the form page reads its data as a server component and renders a colocated client form (e.g. `_components/*-form.tsx`). On success the form navigates back to the list (`router.push(backHref)`), it does not close an overlay.
 
 Why: authenticated pages are full-width and deep-linkable, the back/refresh buttons behave, and long forms (like the document field builder) get room to breathe in a multi-column layout instead of being crammed into a dialog. Don't wrap these pages in a narrow centered `max-w-*` column — use the full width, splitting long forms into columns where it helps. Short read-only detail pages may still constrain width; this rule is about create/edit forms.
+
+# Schema changes: you edit, the user migrates
+
+When a change needs a database column or model, edit `prisma/schema.prisma` and write the code that uses it — but **do not run `prisma migrate` or `prisma generate` yourself.** The user owns the database: they create the migration and regenerate the client.
+
+Consequence: right after you add a column/model, `tsc` will report errors on the new field (the generated client in `app/generated/prisma` doesn't know it yet). That's expected — say so, and verify the rest by checking that the only type errors are the ones about the new field. When you finish a schema change, tell the user which migration is pending so they can run it.

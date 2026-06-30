@@ -26,14 +26,12 @@ import {
   getMyDocumentRequests,
   getPublishedAnnouncements,
 } from "@/lib/documents-data";
-import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { AnnouncementsFeed } from "../_components/announcements-feed";
-import { ComingSoonButton } from "../_components/coming-soon-button";
 import { StatusBadge } from "../_components/status-badge";
-import { formatFullDate, formatShortDate, type RequestStatus } from "../_data";
+import { formatFullDate, formatShortDate, residentStatus } from "../_data";
 
 export const metadata: Metadata = {
   title: "Resident portal · Barangay Libtangin",
@@ -128,14 +126,16 @@ export default async function ResidentPage({
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between gap-2">
                     My requests
-                    <ComingSoonButton
-                      feature="Request history"
-                      variant="ghost"
-                      size="sm"
-                      className="-mr-1.5 text-muted-foreground"
-                    >
-                      View all
-                    </ComingSoonButton>
+                    {myRequests.length > 0 && (
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="sm"
+                        className="-mr-1.5 text-muted-foreground"
+                      >
+                        <Link href={`/resident/${id}/requests`}>View all</Link>
+                      </Button>
+                    )}
                   </CardTitle>
                   <CardDescription>
                     Documents you&apos;ve requested and where they stand.
@@ -242,20 +242,6 @@ export default async function ResidentPage({
       </div>
     </div>
   );
-}
-
-/** Map a document request's lifecycle status onto the resident-facing badge. */
-function residentStatus(status: DocumentRequestStatus): RequestStatus {
-  switch (status) {
-    case DocumentRequestStatus.READY:
-      return "issued";
-    case DocumentRequestStatus.PROCESSING:
-      return "processing";
-    case DocumentRequestStatus.REJECTED:
-      return "action";
-    default:
-      return "submitted";
-  }
 }
 
 /** The residency-verification chip shown next to the date in the greeting. */

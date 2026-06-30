@@ -61,6 +61,54 @@ export async function getActiveDocumentTypeById(
   };
 }
 
+/** A document type by id regardless of active state, for the resident edit form. */
+export async function getDocumentTypeById(
+  id: string,
+): Promise<DocumentTypeDTO | null> {
+  const row = await prisma.documentType.findUnique({ where: { id } });
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    fee: Number(row.fee),
+    turnaroundDays: row.turnaroundDays,
+    active: row.active,
+    fields: parseDocumentFields(row.fields),
+    requestCount: 0,
+    updatedAt: null,
+  };
+}
+
+/** Shape a resident's own request row into the shared DTO. */
+function toMyRequestDTO(
+  row: NonNullable<Awaited<ReturnType<typeof prisma.documentRequest.findFirst>>>,
+): DocumentRequestDTO {
+  return {
+    id: row.id,
+    referenceNumber: row.referenceNumber,
+    documentTypeId: row.documentTypeId,
+    documentName: row.documentName,
+    fee: Number(row.fee),
+    purpose: row.purpose,
+    method: row.method,
+    paymentReference: row.paymentReference,
+    proofImage: row.proofImage,
+    orNumber: row.orNumber,
+    status: row.status,
+    note: row.note,
+    resubmitNote: row.resubmitNote,
+    requesterName: row.requesterName,
+    requesterEmail: null,
+    reviewedByName: null,
+    reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    releasedAt: row.releasedAt?.toISOString() ?? null,
+    fieldValues: parseDocumentFieldValues(row.fieldValues),
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
 /** A resident's own document requests, newest first. */
 export async function getMyDocumentRequests(
   userId: string,
@@ -70,25 +118,18 @@ export async function getMyDocumentRequests(
     orderBy: { createdAt: "desc" },
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    referenceNumber: row.referenceNumber,
-    documentName: row.documentName,
-    fee: Number(row.fee),
-    purpose: row.purpose,
-    method: row.method,
-    paymentReference: row.paymentReference,
-    proofImage: row.proofImage,
-    status: row.status,
-    note: row.note,
-    requesterName: row.requesterName,
-    requesterEmail: null,
-    reviewedByName: null,
-    reviewedAt: row.reviewedAt?.toISOString() ?? null,
-    releasedAt: row.releasedAt?.toISOString() ?? null,
-    fieldValues: parseDocumentFieldValues(row.fieldValues),
-    createdAt: row.createdAt.toISOString(),
-  }));
+  return rows.map(toMyRequestDTO);
+}
+
+/** A single one of the resident's own requests, or null if missing or not theirs. */
+export async function getMyDocumentRequestById(
+  userId: string,
+  id: string,
+): Promise<DocumentRequestDTO | null> {
+  const row = await prisma.documentRequest.findFirst({
+    where: { id, requesterId: userId },
+  });
+  return row ? toMyRequestDTO(row) : null;
 }
 
 /** The payment channels a resident can use, in display order, enabled only. */

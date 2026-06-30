@@ -40,7 +40,7 @@ type Filter = "ALL" | DocumentRequestStatus;
 const FILTERS: { value: Filter; label: string }[] = [
   { value: DocumentRequestStatus.PENDING, label: "Pending" },
   { value: DocumentRequestStatus.PROCESSING, label: "Verified" },
-  { value: DocumentRequestStatus.READY, label: "Released" },
+  { value: DocumentRequestStatus.CLAIMED, label: "Claimed" },
   { value: DocumentRequestStatus.REJECTED, label: "Rejected" },
   { value: "ALL", label: "All" },
 ];
@@ -50,7 +50,7 @@ export function DocumentFeesReview({
   basePath,
 }: {
   requests: DocumentRequestDTO[];
-  /** Detail route prefix, e.g. `/treasurer/{id}/document-fees`. */
+  /** Detail route prefix, e.g. `/treasurer/{id}/payments`. */
   basePath: string;
 }) {
   const [filter, setFilter] = useState<Filter>(DocumentRequestStatus.PENDING);
@@ -61,6 +61,7 @@ export function DocumentFeesReview({
       [DocumentRequestStatus.PENDING]: 0,
       [DocumentRequestStatus.PROCESSING]: 0,
       [DocumentRequestStatus.READY]: 0,
+      [DocumentRequestStatus.CLAIMED]: 0,
       [DocumentRequestStatus.REJECTED]: 0,
     };
     for (const r of requests) base[r.status] += 1;
@@ -280,6 +281,11 @@ function EmptyFilterState({ filter }: { filter: Filter }) {
       title: "Nothing released yet",
       description:
         "Documents the secretary has released to residents appear here.",
+    },
+    [DocumentRequestStatus.CLAIMED]: {
+      title: "Nothing claimed yet",
+      description:
+        "Documents residents have picked up from the secretary appear here.",
     },
     [DocumentRequestStatus.REJECTED]: {
       title: "No rejected payments",

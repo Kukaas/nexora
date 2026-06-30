@@ -104,14 +104,17 @@ export async function getDocumentRequests(
   return rows.map((row) => ({
     id: row.id,
     referenceNumber: row.referenceNumber,
+    documentTypeId: row.documentTypeId,
     documentName: row.documentName,
     fee: Number(row.fee),
     purpose: row.purpose,
     method: row.method,
     paymentReference: row.paymentReference,
     proofImage: row.proofImage,
+    orNumber: row.orNumber,
     status: row.status,
     note: row.note,
+    resubmitNote: row.resubmitNote,
     requesterName: row.requesterName,
     requesterEmail: row.requester?.email ?? null,
     reviewedByName: reviewerName(row.reviewedBy),
@@ -137,14 +140,17 @@ export async function getDocumentRequestById(
   return {
     id: row.id,
     referenceNumber: row.referenceNumber,
+    documentTypeId: row.documentTypeId,
     documentName: row.documentName,
     fee: Number(row.fee),
     purpose: row.purpose,
     method: row.method,
     paymentReference: row.paymentReference,
     proofImage: row.proofImage,
+    orNumber: row.orNumber,
     status: row.status,
     note: row.note,
+    resubmitNote: row.resubmitNote,
     requesterName: row.requesterName,
     requesterEmail: row.requester?.email ?? null,
     reviewedByName: reviewerName(row.reviewedBy),
@@ -172,11 +178,16 @@ export async function getDocumentFeeSummary(): Promise<{
       _sum: { fee: true },
     }),
     // "Cleared" = the treasurer verified the payment this month (it left PENDING
-    // and wasn't rejected), regardless of where the secretary has taken it since.
+    // and wasn't rejected), regardless of where the secretary has taken it since
+    // — verified, ready, or already claimed by the resident.
     prisma.documentRequest.aggregate({
       where: {
         status: {
-          in: [DocumentRequestStatus.PROCESSING, DocumentRequestStatus.READY],
+          in: [
+            DocumentRequestStatus.PROCESSING,
+            DocumentRequestStatus.READY,
+            DocumentRequestStatus.CLAIMED,
+          ],
         },
         reviewedAt: { gte: startOfMonth },
       },

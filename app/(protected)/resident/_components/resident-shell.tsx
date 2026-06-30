@@ -1,8 +1,5 @@
 "use client";
 
-import { FilePlus2 } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -40,14 +37,6 @@ export function ResidentShell({
             <Separator orientation="vertical" className="mr-1 h-5" />
             <NexoraGlyph className="size-7 text-primary md:hidden" />
             <span className="text-sm font-medium">Resident portal</span>
-            <div className="ml-auto flex items-center gap-2">
-              <Button asChild className="hidden sm:inline-flex">
-                <a href="#request">
-                  <FilePlus2 />
-                  Request a document
-                </a>
-              </Button>
-            </div>
           </header>
 
           <div className="flex-1 bg-muted/30">

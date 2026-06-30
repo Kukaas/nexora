@@ -84,6 +84,8 @@ const reviewDocumentSchema = z.object({
   requestId: z.string().min(1),
   decision: z.enum(["VERIFIED", "REJECTED"]),
   note: z.string().trim().max(500).optional(),
+  // The Official Receipt number, recorded when verifying a paid request.
+  orNumber: z.string().trim().max(80).optional(),
 });
 
 /**
@@ -103,7 +105,7 @@ export async function reviewDocumentRequest(
   if (!parsed.success) {
     return { ok: false, error: "Something looked off with that request. Try again." };
   }
-  const { requestId, decision, note } = parsed.data;
+  const { requestId, decision, note, orNumber } = parsed.data;
 
   if (decision === "REJECTED" && !note) {
     return { ok: false, error: "Add a short reason so the resident knows what to fix." };
@@ -111,9 +113,16 @@ export async function reviewDocumentRequest(
 
   const existing = await prisma.documentRequest.findUnique({
     where: { id: requestId },
-    select: { id: true },
+    select: { id: true, fee: true },
   });
   if (!existing) return { ok: false, error: "That request no longer exists." };
+
+  // Paid requests need an OR number on the books before they're verified; free
+  // documents have nothing to receipt.
+  const isPaid = Number(existing.fee) > 0;
+  if (decision === "VERIFIED" && isPaid && !orNumber) {
+    return { ok: false, error: "Enter the OR number to verify this payment." };
+  }
 
   await prisma.documentRequest.update({
     where: { id: requestId },
@@ -123,6 +132,7 @@ export async function reviewDocumentRequest(
           ? DocumentRequestStatus.PROCESSING
           : DocumentRequestStatus.REJECTED,
       note: decision === "REJECTED" ? note : null,
+      orNumber: decision === "VERIFIED" ? (orNumber ?? null) : null,
       reviewedById: auth.userId,
       reviewedAt: new Date(),
       // Clear any prior release stamp if a READY request is sent back.
@@ -130,7 +140,8 @@ export async function reviewDocumentRequest(
     },
   });
 
-  revalidatePath(`/treasurer/${auth.userId}/document-fees`);
+  revalidatePath(`/treasurer/${auth.userId}/payments`);
+  revalidatePath(`/treasurer/${auth.userId}`);
   // The secretary's queue keys off PROCESSING, so refresh their console too.
   revalidatePath("/secretary", "layout");
   return { ok: true };

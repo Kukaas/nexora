@@ -1,4 +1,10 @@
-import { AlertTriangle, CheckCircle2, Clock, Inbox } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Inbox,
+  PackageCheck,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { RequestStatus } from "../_data";
@@ -12,6 +18,12 @@ const STATUS: Record<
     icon: CheckCircle2,
     className:
       "bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-950/40 dark:text-emerald-400 dark:ring-emerald-400/20",
+  },
+  claimed: {
+    label: "Claimed",
+    icon: PackageCheck,
+    className:
+      "bg-slate-100 text-slate-700 ring-slate-600/20 dark:bg-slate-800/50 dark:text-slate-300 dark:ring-slate-400/20",
   },
   processing: {
     label: "Processing",

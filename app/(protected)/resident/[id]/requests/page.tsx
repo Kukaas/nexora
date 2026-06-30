@@ -4,15 +4,14 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { getSession } from "@/lib/session";
-import { getResidencyStatus } from "@/lib/profile";
-import { getActiveDocumentTypes } from "@/lib/documents-data";
-import { DocumentRequest } from "../../_components/document-request";
+import { getMyDocumentRequests } from "@/lib/documents-data";
+import { MyRequestsView } from "../../_components/my-requests-view";
 
 export const metadata: Metadata = {
-  title: "Request a document · Barangay Libtangin",
+  title: "My requests · Barangay Libtangin",
 };
 
-export default async function ResidentRequestCatalogPage({
+export default async function ResidentRequestsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -21,16 +20,11 @@ export default async function ResidentRequestCatalogPage({
   const session = await getSession();
   if (!session) redirect("/sign-in");
 
-  // The catalog acts on the signed-in resident's behalf, so a mismatched id in
-  // the URL is sent back to their own portal rather than someone else's.
+  // The list shows the signed-in resident's own requests, so a mismatched id in
+  // the URL is sent back to their own portal.
   if (session.user.id !== id) redirect(`/resident/${session.user.id}`);
 
-  // Only verified residents can transact. Anyone still under review is bounced
-  // back to the portal, where the review notice explains why.
-  const residency = await getResidencyStatus(session.user.id);
-  if (residency !== "approved") redirect(`/resident/${id}`);
-
-  const types = await getActiveDocumentTypes();
+  const requests = await getMyDocumentRequests(session.user.id);
 
   return (
     <div className="flex flex-col gap-4">
@@ -42,7 +36,18 @@ export default async function ResidentRequestCatalogPage({
         Back to portal
       </Link>
 
-      <DocumentRequest types={types} basePath={`/resident/${id}`} />
+      <header className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight">My requests</h1>
+        <p className="text-sm text-muted-foreground text-pretty">
+          Every document you&apos;ve requested and where it stands.
+        </p>
+      </header>
+
+      <MyRequestsView
+        requests={requests}
+        basePath={`/resident/${id}/requests`}
+        requestHref={`/resident/${id}/request`}
+      />
     </div>
   );
 }

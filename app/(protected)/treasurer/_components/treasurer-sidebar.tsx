@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, QrCode, Receipt } from "lucide-react";
+import { LayoutDashboard, QrCode, Receipt } from "lucide-react";
 
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,17 +25,15 @@ import { SignOutMenuItem } from "../../_components/sign-out-menu-item";
 
 export function TreasurerSidebar({
   user,
-  pendingCount,
   docFeesPendingCount,
 }: {
   user: TreasurerUser;
-  pendingCount: number;
   docFeesPendingCount: number;
 }) {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
   const home = `/treasurer/${user.id}`;
-  const documentFees = `${home}/document-fees`;
+  const payments = `${home}/payments`;
   const methods = `${home}/methods`;
 
   const closeOnMobile = () => {
@@ -69,29 +67,24 @@ export function TreasurerSidebar({
                 <SidebarMenuButton
                   asChild
                   isActive={pathname === home}
-                  tooltip="Payments"
+                  tooltip="Overview"
                 >
                   <Link href={home} onClick={closeOnMobile}>
-                    <Receipt />
-                    <span>Payments</span>
+                    <LayoutDashboard />
+                    <span>Overview</span>
                   </Link>
                 </SidebarMenuButton>
-                {pendingCount > 0 && (
-                  <SidebarMenuBadge className="text-accent-foreground">
-                    {pendingCount}
-                  </SidebarMenuBadge>
-                )}
               </SidebarMenuItem>
 
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname.startsWith(documentFees)}
-                  tooltip="Document fees"
+                  isActive={pathname.startsWith(payments)}
+                  tooltip="Payments"
                 >
-                  <Link href={documentFees} onClick={closeOnMobile}>
-                    <FileText />
-                    <span>Document fees</span>
+                  <Link href={payments} onClick={closeOnMobile}>
+                    <Receipt />
+                    <span>Payments</span>
                   </Link>
                 </SidebarMenuButton>
                 {docFeesPendingCount > 0 && (

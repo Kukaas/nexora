@@ -75,6 +75,34 @@ export async function markRequestReady(input: {
   return { ok: true };
 }
 
+/** Mark a ready document as claimed once the resident has picked it up. */
+export async function markRequestClaimed(input: {
+  requestId: string;
+}): Promise<ActionResult> {
+  const auth = await requireSecretary();
+  if (!auth.ok) return auth;
+
+  const existing = await prisma.documentRequest.findUnique({
+    where: { id: input.requestId },
+    select: { status: true },
+  });
+  if (!existing) return { ok: false, error: "That request no longer exists." };
+  if (existing.status !== DocumentRequestStatus.READY) {
+    return {
+      ok: false,
+      error: "Only a ready document can be marked as claimed.",
+    };
+  }
+
+  await prisma.documentRequest.update({
+    where: { id: input.requestId },
+    data: { status: DocumentRequestStatus.CLAIMED },
+  });
+
+  revalidateSecretary(auth.userId);
+  return { ok: true };
+}
+
 // ── Document types (catalog) ─────────────────────────────────────────────────
 
 const documentFieldSchema = z.object({
@@ -215,6 +243,12 @@ const announcementSchema = z.object({
     Object.values(AnnouncementCategory) as [string, ...string[]],
   ),
   place: z.string().trim().max(160).optional(),
+  // The event/advisory date as "yyyy-MM-dd"; optional for ongoing notices.
+  date: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date.")
+    .optional(),
   pinned: z.boolean(),
   published: z.boolean(),
 });
@@ -233,13 +267,17 @@ export async function saveAnnouncement(
       error: parsed.error.issues[0]?.message ?? "Please check the details and try again.",
     };
   }
-  const { id, title, body, category, place, pinned, published } = parsed.data;
+  const { id, title, body, category, place, date, pinned, published } =
+    parsed.data;
 
   const data = {
     title,
     body,
     category: category as AnnouncementCategory,
     place: place || null,
+    // Store at UTC midnight; the barangay runs on a single time zone (UTC+8), so
+    // the calendar day never shifts when it's read back.
+    date: date ? new Date(`${date}T00:00:00Z`) : null,
     pinned,
     published,
     authorId: auth.userId,

@@ -99,11 +99,15 @@ export function ResidentSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="My requests">
-                  <a href="#my-requests" onClick={closeOnMobile}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(`${home}/requests`)}
+                  tooltip="My requests"
+                >
+                  <Link href={`${home}/requests`} onClick={closeOnMobile}>
                     <FileText />
                     <span>My requests</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
                 {actionNeeded > 0 && (
                   <SidebarMenuBadge className="text-destructive">
@@ -122,7 +126,10 @@ export function ResidentSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname.startsWith(`${home}/request`)}
+                  isActive={
+                    pathname === `${home}/request` ||
+                    pathname.startsWith(`${home}/request/`)
+                  }
                   tooltip="Request a document"
                 >
                   <Link href={`${home}/request`} onClick={closeOnMobile}>

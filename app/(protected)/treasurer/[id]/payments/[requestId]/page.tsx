@@ -1,24 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertCircle, ArrowLeft, BanknoteIcon, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 
-import { getDocumentRequestById } from "@/lib/secretary-data";
+import { getDocumentRequestById } from "@/lib/treasurer-data";
 import { formatFieldValue, requestHasPayment } from "@/lib/documents";
 import {
-  formatDate,
   formatDateTime,
   formatPeso,
   MethodBadge,
   RequestStatusBadge,
-} from "../../../_components/secretary-ui";
-import { RequestReadyAction } from "../../../_components/request-ready-action";
+} from "../../../_components/treasurer-ui";
+import { DocumentFeeActions } from "../../../_components/document-fee-actions";
 
 export const metadata: Metadata = {
-  title: "Request · Secretary · Barangay Libtangin",
+  title: "Payment · Treasury · Barangay Libtangin",
 };
 
-export default async function SecretaryRequestPage({
+export default async function TreasurerPaymentDetailPage({
   params,
 }: {
   params: Promise<{ id: string; requestId: string }>;
@@ -27,30 +26,33 @@ export default async function SecretaryRequestPage({
   const request = await getDocumentRequestById(requestId);
   if (!request) notFound();
 
-  const backHref = `/secretary/${id}/requests`;
+  const backHref = `/treasurer/${id}/payments`;
   const hasPayment = requestHasPayment(request);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <Link
         href={backHref}
         className="inline-flex w-fit items-center gap-1.5 rounded-2xl text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/30"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Document requests
+        Payments
       </Link>
 
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight text-balance">
-          {request.documentName}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Requested by {request.requesterName}
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold tracking-tight">
+            {request.requesterName}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {request.documentName}
+          </p>
+        </div>
+        <RequestStatusBadge status={request.status} className="mt-1 shrink-0" />
       </header>
 
       <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
-        {/* Summary + action: sticky on desktop, action-first on mobile. */}
+        {/* Summary + review actions: sticky on desktop, action-first on mobile. */}
         <aside className="lg:order-2 lg:sticky lg:top-20">
           <div className="flex flex-col gap-4 rounded-4xl border border-border bg-card p-5">
             <div className="flex items-baseline justify-between gap-3">
@@ -68,16 +70,20 @@ export default async function SecretaryRequestPage({
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <dt className="text-muted-foreground">Requested</dt>
-                <dd className="font-medium">{formatDate(request.createdAt)}</dd>
+                <dt className="text-muted-foreground">Submitted</dt>
+                <dd className="font-medium">
+                  {formatDateTime(request.createdAt)}
+                </dd>
               </div>
             </dl>
 
             <div className="border-t border-border pt-4">
-              <RequestReadyAction
+              <DocumentFeeActions
                 requestId={request.id}
                 status={request.status}
                 backHref={backHref}
+                verifyLabel={hasPayment ? "Verify payment" : "Approve request"}
+                requiresOr={hasPayment}
               />
             </div>
           </div>
@@ -87,14 +93,15 @@ export default async function SecretaryRequestPage({
         <div className="flex flex-col gap-6 lg:order-1 lg:col-span-2">
           <section>
             <h2 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">
-              Request details
+              Payment details
             </h2>
             <dl className="grid gap-px overflow-hidden rounded-3xl border border-border bg-border text-sm">
+              <Row label="Document">{request.documentName}</Row>
               <Row label="Reference">
                 <span className="font-mono">{request.referenceNumber}</span>
               </Row>
               {request.requesterEmail && (
-                <Row label="Email">{request.requesterEmail}</Row>
+                <Row label="Resident">{request.requesterEmail}</Row>
               )}
               {request.purpose && <Row label="Purpose">{request.purpose}</Row>}
               {request.fieldValues.map((field, i) => (
@@ -102,6 +109,9 @@ export default async function SecretaryRequestPage({
                   {formatFieldValue(field)}
                 </Row>
               ))}
+              {request.resubmitNote && (
+                <Row label="Resident's note">{request.resubmitNote}</Row>
+              )}
               {hasPayment && request.paymentReference && (
                 <Row label="Payment ref.">
                   <span className="font-mono">{request.paymentReference}</span>
@@ -112,23 +122,17 @@ export default async function SecretaryRequestPage({
                   <span className="font-mono">{request.orNumber}</span>
                 </Row>
               )}
-              <Row label="Requested">{formatDateTime(request.createdAt)}</Row>
+              <Row label="Submitted">{formatDateTime(request.createdAt)}</Row>
               {request.reviewedAt && (
                 <Row label="Reviewed">
                   {formatDateTime(request.reviewedAt)}
                   {request.reviewedByName ? ` · ${request.reviewedByName}` : ""}
                 </Row>
               )}
-              {request.releasedAt && (
-                <Row label="Ready since">
-                  {formatDateTime(request.releasedAt)}
-                </Row>
-              )}
             </dl>
           </section>
 
-          {/* Proof of payment — only when the document charges a fee. The
-              treasurer owns verification; this is read-only context. */}
+          {/* Proof of payment — only when the document actually charges a fee. */}
           {hasPayment && (
             <section>
               <h2 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">
@@ -145,32 +149,25 @@ export default async function SecretaryRequestPage({
                   <img
                     src={request.proofImage}
                     alt={`Payment proof from ${request.requesterName}`}
-                    className="max-h-[60vh] w-full bg-muted object-contain transition-transform duration-300 ease-out group-hover:scale-[1.01] motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+                    className="max-h-[70vh] w-full bg-muted object-contain"
                   />
-                  <span className="pointer-events-none absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-2xl bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 ring-1 ring-foreground/5 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none">
+                  <span className="pointer-events-none absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-2xl bg-background/90 px-2.5 py-1 text-xs font-medium opacity-0 ring-1 ring-foreground/5 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
                     <ExternalLink className="size-3.5" aria-hidden />
                     Open full size
                   </span>
                 </a>
               ) : (
-                <div className="flex items-center gap-3 rounded-3xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-                  <BanknoteIcon className="size-4 shrink-0" aria-hidden />
-                  <span>
-                    No screenshot attached. This is being paid in cash at the
-                    hall.
-                  </span>
-                </div>
+                <p className="rounded-3xl bg-muted px-4 py-3 text-sm text-muted-foreground">
+                  No screenshot attached. This is being paid in cash at the hall.
+                </p>
               )}
             </section>
           )}
 
           {request.note && (
-            <div className="flex gap-3 rounded-3xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <div>
-                <p className="font-medium">Sent back to the resident</p>
-                <p className="mt-0.5 text-pretty">{request.note}</p>
-              </div>
+            <div className="rounded-3xl bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <p className="font-medium">Sent back</p>
+              <p className="mt-0.5 text-pretty">{request.note}</p>
             </div>
           )}
         </div>
