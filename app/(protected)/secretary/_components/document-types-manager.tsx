@@ -5,19 +5,32 @@ import { useRouter } from "next/navigation";
 import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Empty,
   EmptyDescription,
@@ -37,6 +50,12 @@ type EditorState =
   | { mode: "closed" }
   | { mode: "create" }
   | { mode: "edit"; type: DocumentTypeDTO };
+
+/** "No requests yet" / "1 request" / "12 requests". */
+function requestCountLabel(count: number): string {
+  if (count === 0) return "No requests yet";
+  return `${count} request${count === 1 ? "" : "s"}`;
+}
 
 export function DocumentTypesManager({
   types,
@@ -61,14 +80,31 @@ export function DocumentTypesManager({
     router.refresh();
   };
 
+  const activeCount = types.filter((t) => t.active).length;
+
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-end">
-        <Button onClick={() => setEditor({ mode: "create" })}>
-          <Plus />
-          Add document
-        </Button>
-      </div>
+      {types.length > 0 && (
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground tabular-nums">
+              {types.length}
+            </span>{" "}
+            {types.length === 1 ? "document" : "documents"}
+            <span className="px-1.5 text-muted-foreground/60" aria-hidden>
+              ·
+            </span>
+            <span className="font-medium text-foreground tabular-nums">
+              {activeCount}
+            </span>{" "}
+            available to residents
+          </p>
+          <Button onClick={() => setEditor({ mode: "create" })}>
+            <Plus />
+            Add document
+          </Button>
+        </div>
+      )}
 
       {types.length === 0 ? (
         <Empty className="rounded-4xl border border-dashed border-border bg-card/50">
@@ -92,23 +128,43 @@ export function DocumentTypesManager({
           {types.map((type) => (
             <li
               key={type.id}
-              className="flex items-center gap-4 px-4 py-4 sm:px-5"
+              className={cn(
+                "flex items-center gap-3 px-4 py-4 transition-colors sm:gap-4 sm:px-5",
+                !type.active && "bg-muted/40",
+              )}
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <span className="font-medium">{type.name}</span>
-                  <span className="font-mono text-sm font-medium tabular-nums text-foreground">
-                    {formatPeso(type.fee)}
+                  <span
+                    className={cn(
+                      "font-medium",
+                      !type.active && "text-muted-foreground",
+                    )}
+                  >
+                    {type.name}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {turnaroundLabel(type.turnaroundDays)}
+                  <span
+                    className={cn(
+                      "font-mono text-sm font-medium tabular-nums",
+                      type.active ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {type.fee > 0 ? formatPeso(type.fee) : "Free"}
                   </span>
+                  {!type.active && <Badge variant="secondary">Off</Badge>}
                 </div>
                 {type.description && (
                   <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
                     {type.description}
                   </p>
                 )}
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <span>{turnaroundLabel(type.turnaroundDays)}</span>
+                  <span className="text-muted-foreground/50" aria-hidden>
+                    ·
+                  </span>
+                  <span>{requestCountLabel(type.requestCount)}</span>
+                </div>
               </div>
 
               <div className="flex shrink-0 items-center gap-1 sm:gap-2">
@@ -157,8 +213,8 @@ function DocumentTypeEditor({
   const editing = state.mode === "edit" ? state.type : null;
 
   return (
-    <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
-      <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-md">
+    <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
         {open && (
           <EditorForm
             key={editing?.id ?? "new"}
@@ -167,8 +223,8 @@ function DocumentTypeEditor({
             onClose={onClose}
           />
         )}
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -243,12 +299,12 @@ function EditorForm({
 
   return (
     <>
-      <SheetHeader className="border-b border-border px-5 py-4">
-        <SheetTitle>{editing ? "Edit document" : "Add document"}</SheetTitle>
-        <SheetDescription className="sr-only">
+      <DialogHeader className="border-b border-border px-5 py-4 pr-14">
+        <DialogTitle>{editing ? "Edit document" : "Add document"}</DialogTitle>
+        <DialogDescription className="sr-only">
           Set the document name, fee, and turnaround.
-        </SheetDescription>
-      </SheetHeader>
+        </DialogDescription>
+      </DialogHeader>
 
       <div className="flex-1 overflow-y-auto px-5 py-5">
         <div className="flex flex-col gap-5">
@@ -281,16 +337,27 @@ function EditorForm({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor={feeId}>Fee (₱)</Label>
-              <Input
-                id={feeId}
-                value={fee}
-                onChange={(e) => setFee(e.target.value)}
-                placeholder="50"
-                inputMode="decimal"
-                disabled={busy}
-                className="font-mono"
-              />
+              <Label htmlFor={feeId}>Fee</Label>
+              <div className="relative">
+                <span
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-sm text-muted-foreground"
+                  aria-hidden
+                >
+                  ₱
+                </span>
+                <Input
+                  id={feeId}
+                  value={fee}
+                  onChange={(e) => setFee(e.target.value)}
+                  placeholder="50"
+                  inputMode="decimal"
+                  disabled={busy}
+                  className="pl-7 font-mono"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Use 0 for a free document.
+              </p>
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor={daysId}>Turnaround (days)</Label>
@@ -303,6 +370,9 @@ function EditorForm({
                 disabled={busy}
                 className="font-mono"
               />
+              <p className="text-xs text-muted-foreground">
+                Use 0 for same day.
+              </p>
             </div>
           </div>
 
@@ -336,15 +406,42 @@ function EditorForm({
 
       <div className="flex items-center gap-2 border-t border-border px-5 py-4">
         {deletable && (
-          <Button
-            variant="ghost"
-            onClick={remove}
-            disabled={busy}
-            className="text-destructive hover:text-destructive"
-          >
-            {deleting ? <Spinner /> : <Trash2 />}
-            Delete
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                disabled={busy}
+                className="text-destructive hover:text-destructive"
+              >
+                {deleting ? <Spinner /> : <Trash2 />}
+                Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this document?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  <span className="font-medium text-foreground">
+                    {editing?.name}
+                  </span>{" "}
+                  will be removed from the catalog and residents won&apos;t be
+                  able to request it. This can&apos;t be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={busy}>
+                  Keep document
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={remove}
+                  disabled={busy}
+                >
+                  Delete document
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>

@@ -49,6 +49,33 @@ export type RequestSummary = {
   readyCount: number;
 };
 
+/** Per-status counts for the requests table tabs, plus the grand total. */
+export type RequestStatusCounts = Record<DocumentRequestStatus, number> & {
+  all: number;
+};
+
+/**
+ * A server-paginated requests query. `status` "ALL" skips the status filter;
+ * `start`/`end` are inclusive ISO bounds on `createdAt` (null = unbounded);
+ * `page` is 1-based.
+ */
+export type RequestQuery = {
+  status: DocumentRequestStatus | "ALL";
+  start: string | null;
+  end: string | null;
+  page: number;
+  pageSize: number;
+};
+
+/** One page of requests plus the totals the table needs to paginate. */
+export type RequestPage = {
+  items: DocumentRequestDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+};
+
 export type AnnouncementDTO = {
   id: string;
   title: string;
