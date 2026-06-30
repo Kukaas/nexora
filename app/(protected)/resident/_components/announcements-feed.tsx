@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, MapPin, Megaphone, Pin } from "lucide-react";
+import { CalendarDays, ChevronDown, MapPin, Megaphone, Pin } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import {
   type AnnouncementDTO,
 } from "@/lib/documents";
 import { AnnouncementCategory } from "@/app/generated/prisma/enums";
-import { formatShortDate } from "../_data";
+import { formatFullDate, formatShortDate } from "../_data";
 
 type Filter = AnnouncementCategory | "all";
 
@@ -134,6 +134,13 @@ function AnnouncementRow({ item }: { item: AnnouncementDTO }) {
           <h3 className="font-medium text-foreground group-focus-visible:underline group-focus-visible:underline-offset-4">
             {item.title}
           </h3>
+
+          {item.date && (
+            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-accent-foreground">
+              <CalendarDays className="size-4 shrink-0" aria-hidden />
+              {formatFullDate(item.date)}
+            </p>
+          )}
 
           <p
             className={cn(

@@ -6,7 +6,30 @@
  * request-status vocabulary and the date formatters used across the portal.
  */
 
-export type RequestStatus = "issued" | "processing" | "submitted" | "action";
+import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
+
+export type RequestStatus =
+  | "issued"
+  | "claimed"
+  | "processing"
+  | "submitted"
+  | "action";
+
+/** Map a document request's lifecycle status onto the resident-facing badge. */
+export function residentStatus(status: DocumentRequestStatus): RequestStatus {
+  switch (status) {
+    case DocumentRequestStatus.READY:
+      return "issued";
+    case DocumentRequestStatus.CLAIMED:
+      return "claimed";
+    case DocumentRequestStatus.PROCESSING:
+      return "processing";
+    case DocumentRequestStatus.REJECTED:
+      return "action";
+    default:
+      return "submitted";
+  }
+}
 
 const MANILA = "Asia/Manila";
 

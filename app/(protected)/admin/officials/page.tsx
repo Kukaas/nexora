@@ -2,20 +2,12 @@ import type { Metadata } from "next";
 import { UserPlus } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
-import { UserRoles } from "@/app/generated/prisma/enums";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { AccountStatusBadge } from "../_components/account-status-badge";
 import { CreateOfficialDialog } from "../_components/create-official-dialog";
-import { RoleBadge } from "../_components/role-badge";
-import { OFFICIAL_ROLES, displayName, formatDate, initialsOf } from "../_data";
+import {
+  OfficialsTable,
+  type OfficialRow,
+} from "../_components/officials-table";
+import { OFFICIAL_ROLES, displayName } from "../_data";
 
 export const metadata: Metadata = {
   title: "Officials · Admin · Barangay Libtangin",
@@ -37,6 +29,15 @@ export default async function OfficialsPage() {
     },
   });
 
+  const rows: OfficialRow[] = officials.map((o) => ({
+    id: o.id,
+    name: displayName(o),
+    email: o.email,
+    roles: o.roles.filter((r) => OFFICIAL_ROLES.includes(r)),
+    emailVerified: o.emailVerified,
+    createdAt: o.createdAt,
+  }));
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -55,95 +56,33 @@ export default async function OfficialsPage() {
         </CreateOfficialDialog>
       </header>
 
-      <div className="overflow-hidden rounded-4xl bg-card shadow-md ring-1 ring-foreground/5 dark:ring-foreground/10">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-5">Official</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="hidden sm:table-cell">Status</TableHead>
-                <TableHead className="hidden pr-5 text-right md:table-cell">
-                  Created
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {officials.length === 0 ? (
-                <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="py-16">
-                    <div className="flex flex-col items-center gap-3 text-center">
-                      <span className="flex size-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-                        <UserPlus className="size-6" aria-hidden />
-                      </span>
-                      <div className="space-y-1">
-                        <p className="font-medium text-foreground">
-                          No official accounts yet
-                        </p>
-                        <p className="max-w-xs text-sm text-muted-foreground">
-                          Create the first one for the captain or a staff member.
-                        </p>
-                      </div>
-                      <CreateOfficialDialog>
-                        <UserPlus />
-                        Create official account
-                      </CreateOfficialDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                officials.map((o) => {
-                  const name = displayName(o);
-                  const officialRoles = o.roles.filter((r) =>
-                    OFFICIAL_ROLES.includes(r),
-                  );
-                  return (
-                    <TableRow key={o.id}>
-                      <TableCell className="pl-5">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="size-8">
-                            <AvatarFallback className="text-xs">
-                              {initialsOf(name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-foreground">
-                              {name}
-                            </p>
-                            <p className="truncate font-mono text-xs text-muted-foreground">
-                              {o.email}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1.5">
-                          {officialRoles.map((r) => (
-                            <RoleBadge key={r} role={r} />
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <AccountStatusBadge
-                          status={o.emailVerified ? "active" : "unverified"}
-                        />
-                      </TableCell>
-                      <TableCell className="hidden pr-5 text-right text-sm text-muted-foreground tabular-nums md:table-cell">
-                        {formatDate(o.createdAt)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
+      {rows.length === 0 ? (
+        <div className="rounded-4xl border border-border bg-card">
+          <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+              <UserPlus className="size-6" aria-hidden />
+            </span>
+            <div className="space-y-1">
+              <p className="font-medium text-foreground">
+                No official accounts yet
+              </p>
+              <p className="max-w-xs text-sm text-muted-foreground">
+                Create the first one for the captain or a staff member.
+              </p>
+            </div>
+            <CreateOfficialDialog>
+              <UserPlus />
+              Create official account
+            </CreateOfficialDialog>
+          </div>
         </div>
-      </div>
+      ) : (
+        <OfficialsTable officials={rows} />
+      )}
 
       <p className="text-xs text-muted-foreground">
-        {officials.length}{" "}
-        {officials.length === 1 ? "account" : "accounts"} with official access,
-        including administrators.
+        {rows.length} {rows.length === 1 ? "account" : "accounts"} with official
+        access, including administrators.
       </p>
     </div>
   );

@@ -177,6 +177,8 @@ model DocumentType {
   turnaroundDays                   Int              @default(2) @map("turnaround_days")
   active                           Boolean          @default(true)
 
+  fields                           Json             @default("[]")
+
   requests                         DocumentRequest[]
 
   updatedById                      String?          @map("updated_by_id")
@@ -198,14 +200,18 @@ model DocumentRequest {
   documentName                     String           @map("document_name")
   fee                              Decimal          @db.Decimal(10, 2)
 
+  fieldValues                      Json             @default("[]") @map("field_values")
+
   purpose                          String?
 
   method                           PaymentMethodType
   paymentReference                 String?          @map("payment_reference")
   proofImage                       String?          @map("proof_image")
+  orNumber                         String?          @map("or_number")
 
   status                           DocumentRequestStatus @default(PENDING)
   note                             String?
+  resubmitNote                     String?          @map("resubmit_note")
 
   requesterId                      String           @map("requester_id")
   requester                        User             @relation("DocumentRequester", fields: [requesterId], references: [id], onDelete: Cascade)
@@ -233,6 +239,7 @@ model Announcement {
   pinned                           Boolean           @default(false)
   published                        Boolean           @default(true)
   place                            String?
+  date                             DateTime?         @map("date")
 
   authorId                         String?           @map("author_id")
   author                           User?             @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
@@ -248,6 +255,7 @@ enum DocumentRequestStatus {
   PENDING
   PROCESSING
   READY
+  CLAIMED
   REJECTED
 }
 

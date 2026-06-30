@@ -18,11 +18,18 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TableCard } from "@/components/ui/data-table";
 import { CreateOfficialDialog } from "./_components/create-official-dialog";
 import { RoleBadge } from "./_components/role-badge";
 import {
@@ -44,7 +51,8 @@ export default async function AdminOverviewPage() {
     session?.user?.name?.split(" ")[0] ||
     "Admin";
 
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
 
   const [
     officialsCount,
@@ -144,61 +152,78 @@ export default async function AdminOverviewPage() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between gap-2">
-              Officials
-              <Button
-                asChild
-                variant="ghost"
-                size="sm"
-                className="-mr-1.5 text-muted-foreground"
-              >
-                <Link href="/admin/officials">
-                  Manage
-                  <ArrowRight />
-                </Link>
-              </Button>
-            </CardTitle>
-            <CardDescription>
-              Accounts that can sign in to run the barangay.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1">
-            <ul className="-my-1 divide-y divide-border">
-              {officials.map((o) => {
-                const name = displayName(o);
-                return (
-                  <li
-                    key={o.id}
-                    className="flex items-center justify-between gap-3 py-3"
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Avatar className="size-8">
-                        <AvatarFallback className="text-xs">
-                          {initialsOf(name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{name}</p>
-                        <p className="truncate font-mono text-xs text-muted-foreground">
-                          {o.email}
-                        </p>
-                      </div>
-                    </div>
-                    <RoleBadge role={primaryRole(o.roles)} className="shrink-0" />
-                  </li>
-                );
-              })}
-            </ul>
-          </CardContent>
-          <CardFooter>
-            <CreateOfficialDialog className="w-full" size="lg">
-              <UserPlus />
-              Create official account
-            </CreateOfficialDialog>
-          </CardFooter>
-        </Card>
+        <section className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Officials</h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Accounts that can sign in to run the barangay.
+              </p>
+            </div>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="-mr-1.5 shrink-0 text-muted-foreground"
+            >
+              <Link href="/admin/officials">
+                Manage
+                <ArrowRight />
+              </Link>
+            </Button>
+          </div>
+
+          <TableCard>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-11 ps-5 text-xs font-medium tracking-wide text-muted-foreground">
+                    Official
+                  </TableHead>
+                  <TableHead className="h-11 pe-5 text-right text-xs font-medium tracking-wide text-muted-foreground">
+                    Role
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {officials.map((o) => {
+                  const name = displayName(o);
+                  return (
+                    <TableRow key={o.id}>
+                      <TableCell className="ps-5">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="size-8">
+                            <AvatarFallback className="text-xs">
+                              {initialsOf(name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">
+                              {name}
+                            </p>
+                            <p className="truncate font-mono text-xs text-muted-foreground">
+                              {o.email}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="pe-5 text-right">
+                        <div className="flex justify-end">
+                          <RoleBadge role={primaryRole(o.roles)} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableCard>
+
+          <CreateOfficialDialog className="w-full" size="lg">
+            <UserPlus />
+            Create official account
+          </CreateOfficialDialog>
+        </section>
 
         <aside className="space-y-6">
           <Card>

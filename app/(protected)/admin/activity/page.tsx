@@ -1,22 +1,14 @@
 import type { Metadata } from "next";
-import { Activity, ShieldCheck, UserPlus } from "lucide-react";
+import { Activity } from "lucide-react";
 
 import { prisma } from "@/lib/prisma";
 import { UserRoles } from "@/app/generated/prisma/enums";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { residentStatus } from "../_components/account-status-badge";
 import {
-  AccountStatusBadge,
-  residentStatus,
-} from "../_components/account-status-badge";
-import { RoleBadge } from "../_components/role-badge";
-import {
-  ROLE_META,
-  displayName,
-  formatDateTime,
-  formatRelative,
-  initialsOf,
-  primaryRole,
-} from "../_data";
+  ActivityTable,
+  type ActivityEvent,
+} from "../_components/activity-table";
+import { displayName, primaryRole } from "../_data";
 
 export const metadata: Metadata = {
   title: "Activity log · Admin · Barangay Libtangin",
@@ -42,6 +34,20 @@ export default async function ActivityPage() {
     },
   });
 
+  // Flatten each account into a display row once, on the server.
+  const events: ActivityEvent[] = users.map((u) => {
+    const role = primaryRole(u.roles);
+    return {
+      id: u.id,
+      name: displayName(u),
+      email: u.email,
+      role,
+      isOfficial: role !== UserRoles.RESIDENT,
+      status: residentStatus(u),
+      createdAt: u.createdAt,
+    };
+  });
+
   return (
     <div className="space-y-6">
       <header>
@@ -54,8 +60,8 @@ export default async function ActivityPage() {
         </p>
       </header>
 
-      <div className="overflow-hidden rounded-4xl bg-card p-2 shadow-md ring-1 ring-foreground/5 dark:ring-foreground/10 sm:p-3">
-        {users.length === 0 ? (
+      {events.length === 0 ? (
+        <div className="rounded-4xl border border-border bg-card">
           <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
             <span className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
               <Activity className="size-6" aria-hidden />
@@ -68,61 +74,10 @@ export default async function ActivityPage() {
               </p>
             </div>
           </div>
-        ) : (
-          <ol className="divide-y divide-border">
-            {users.map((u) => {
-              const name = displayName(u);
-              const role = primaryRole(u.roles);
-              const isOfficial = role !== UserRoles.RESIDENT;
-              const status = residentStatus(u);
-              return (
-                <li
-                  key={u.id}
-                  className="flex items-start gap-3.5 px-3 py-3.5 sm:px-4"
-                >
-                  <Avatar className="mt-0.5 size-9">
-                    <AvatarFallback className="text-xs">
-                      {initialsOf(name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="truncate font-medium text-foreground">
-                        {name}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                        {isOfficial ? (
-                          <ShieldCheck className="size-3.5" aria-hidden />
-                        ) : (
-                          <UserPlus className="size-3.5" aria-hidden />
-                        )}
-                        joined as {ROLE_META[role].label}
-                      </span>
-                    </div>
-                    <p className="truncate font-mono text-xs text-muted-foreground">
-                      {u.email}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    {isOfficial ? (
-                      <RoleBadge role={role} />
-                    ) : (
-                      <AccountStatusBadge status={status} />
-                    )}
-                    <time
-                      dateTime={u.createdAt.toISOString()}
-                      title={formatDateTime(u.createdAt)}
-                      className="text-xs text-muted-foreground tabular-nums"
-                    >
-                      {formatRelative(u.createdAt)}
-                    </time>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        )}
-      </div>
+        </div>
+      ) : (
+        <ActivityTable events={events} />
+      )}
     </div>
   );
 }

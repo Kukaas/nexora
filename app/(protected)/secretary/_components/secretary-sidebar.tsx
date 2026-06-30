@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, Megaphone, ScrollText } from "lucide-react";
+import { FileText, LayoutDashboard, Megaphone, ScrollText } from "lucide-react";
 
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -33,6 +33,7 @@ export function SecretarySidebar({
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
   const home = `/secretary/${user.id}`;
+  const requests = `${home}/requests`;
   const documents = `${home}/documents`;
   const announcements = `${home}/announcements`;
 
@@ -67,9 +68,22 @@ export function SecretarySidebar({
                 <SidebarMenuButton
                   asChild
                   isActive={pathname === home}
-                  tooltip="Document requests"
+                  tooltip="Overview"
                 >
                   <Link href={home} onClick={closeOnMobile}>
+                    <LayoutDashboard />
+                    <span>Overview</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(requests)}
+                  tooltip="Document requests"
+                >
+                  <Link href={requests} onClick={closeOnMobile}>
                     <FileText />
                     <span>Requests</span>
                   </Link>

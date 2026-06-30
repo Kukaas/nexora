@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   Clock,
   Loader,
+  PackageCheck,
   QrCode,
   XCircle,
 } from "lucide-react";
@@ -78,6 +79,12 @@ export function RequestStatusBadge({
       icon: CheckCircle2,
       classes:
         "bg-emerald-600/10 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300",
+    },
+    [DocumentRequestStatus.CLAIMED]: {
+      label: "Claimed",
+      icon: PackageCheck,
+      classes:
+        "bg-slate-600/10 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
     },
     [DocumentRequestStatus.REJECTED]: {
       label: "Rejected",

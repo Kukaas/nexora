@@ -14,6 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  DataPagination,
+  DEFAULT_PAGE_SIZE_OPTIONS,
+  TableCard,
+  useClientPagination,
+} from "@/components/ui/data-table";
+import {
   AccountStatusBadge,
   type AccountStatus,
 } from "./account-status-badge";
@@ -47,6 +53,8 @@ export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
     );
   }, [query, residents]);
 
+  const pg = useClientPagination(filtered, 10);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -58,7 +66,10 @@ export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
           <Input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              pg.setPage(1);
+            }}
             placeholder="Search name, email, or mobile"
             aria-label="Search residents"
             className="pl-9"
@@ -73,9 +84,8 @@ export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
         </p>
       </div>
 
-      <div className="overflow-hidden rounded-4xl bg-card shadow-md ring-1 ring-foreground/5 dark:ring-foreground/10">
-        <div className="overflow-x-auto">
-          <Table>
+      <TableCard>
+        <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="pl-5">Resident</TableHead>
@@ -90,7 +100,7 @@ export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {pg.total === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={5} className="py-14">
                     <div className="flex flex-col items-center gap-2 text-center">
@@ -111,7 +121,7 @@ export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((r) => (
+                pg.visible.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell className="pl-5">
                       <div className="flex items-center gap-3">
@@ -157,8 +167,21 @@ export function ResidentsTable({ residents }: { residents: ResidentRow[] }) {
               )}
             </TableBody>
           </Table>
-        </div>
-      </div>
+      </TableCard>
+
+      {pg.total > 0 && (
+        <DataPagination
+          page={pg.page}
+          pageCount={pg.pageCount}
+          pageSize={pg.pageSize}
+          pageSizeOptions={DEFAULT_PAGE_SIZE_OPTIONS}
+          total={pg.total}
+          from={pg.from}
+          to={pg.to}
+          onPageChange={pg.setPage}
+          onPageSizeChange={pg.setPageSize}
+        />
+      )}
     </div>
   );
 }

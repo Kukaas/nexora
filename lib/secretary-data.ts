@@ -1,12 +1,18 @@
 import "server-only";
 
+import { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
-import type {
-  AnnouncementDTO,
-  DocumentRequestDTO,
-  DocumentTypeDTO,
-  RequestSummary,
+import {
+  parseDocumentFields,
+  parseDocumentFieldValues,
+  type AnnouncementDTO,
+  type DocumentRequestDTO,
+  type DocumentTypeDTO,
+  type RequestPage,
+  type RequestQuery,
+  type RequestStatusCounts,
+  type RequestSummary,
 } from "@/lib/documents";
 
 /**
@@ -17,36 +23,130 @@ import type {
  * `@/lib/documents` (client-safe). Mirrors `@/lib/treasurer-data`.
  */
 
-export async function getDocumentRequests(
-  status?: DocumentRequestStatus,
-): Promise<DocumentRequestDTO[]> {
-  const rows = await prisma.documentRequest.findMany({
-    where: status ? { status } : undefined,
-    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
-    include: {
-      requester: { select: { email: true } },
-      reviewedBy: { select: { name: true, firstName: true, lastName: true } },
-    },
-  });
+const requestInclude = {
+  requester: { select: { email: true } },
+  reviewedBy: { select: { name: true, firstName: true, lastName: true } },
+} satisfies Prisma.DocumentRequestInclude;
 
-  return rows.map((row) => ({
+type RequestRow = Prisma.DocumentRequestGetPayload<{
+  include: typeof requestInclude;
+}>;
+
+function toRequestDTO(row: RequestRow): DocumentRequestDTO {
+  return {
     id: row.id,
     referenceNumber: row.referenceNumber,
+    documentTypeId: row.documentTypeId,
     documentName: row.documentName,
     fee: Number(row.fee),
     purpose: row.purpose,
     method: row.method,
     paymentReference: row.paymentReference,
     proofImage: row.proofImage,
+    orNumber: row.orNumber,
     status: row.status,
     note: row.note,
+    resubmitNote: row.resubmitNote,
     requesterName: row.requesterName,
     requesterEmail: row.requester?.email ?? null,
     reviewedByName: personName(row.reviewedBy),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     releasedAt: row.releasedAt?.toISOString() ?? null,
+    fieldValues: parseDocumentFieldValues(row.fieldValues),
     createdAt: row.createdAt.toISOString(),
-  }));
+  };
+}
+
+/** Build the shared where-clause for status + created-at range filters. */
+function requestWhere(
+  status: DocumentRequestStatus | "ALL",
+  start: string | null,
+  end: string | null,
+): Prisma.DocumentRequestWhereInput {
+  const where: Prisma.DocumentRequestWhereInput = {};
+  if (status !== "ALL") where.status = status;
+  if (start || end) {
+    where.createdAt = {
+      ...(start ? { gte: new Date(start) } : {}),
+      ...(end ? { lte: new Date(end) } : {}),
+    };
+  }
+  return where;
+}
+
+/**
+ * One page of document requests for the secretary table. Only the requested
+ * slice is read from the database; the client asks for the next page as the
+ * secretary moves through them, so the full list is never loaded at once.
+ */
+export async function getDocumentRequestsPage({
+  status,
+  start,
+  end,
+  page,
+  pageSize,
+}: RequestQuery): Promise<RequestPage> {
+  const where = requestWhere(status, start, end);
+  const safePage = Math.max(1, Math.trunc(page));
+
+  const [rows, total] = await prisma.$transaction([
+    prisma.documentRequest.findMany({
+      where,
+      orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      include: requestInclude,
+      skip: (safePage - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.documentRequest.count({ where }),
+  ]);
+
+  return {
+    items: rows.map(toRequestDTO),
+    total,
+    page: safePage,
+    pageSize,
+    pageCount: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+/** Per-status counts within a date range, for the table's filter tabs. */
+export async function getRequestStatusCounts(
+  start: string | null,
+  end: string | null,
+): Promise<RequestStatusCounts> {
+  const grouped = await prisma.documentRequest.groupBy({
+    by: ["status"],
+    where: requestWhere("ALL", start, end),
+    _count: true,
+  });
+
+  const counts: RequestStatusCounts = {
+    all: 0,
+    [DocumentRequestStatus.PENDING]: 0,
+    [DocumentRequestStatus.PROCESSING]: 0,
+    [DocumentRequestStatus.READY]: 0,
+    [DocumentRequestStatus.CLAIMED]: 0,
+    [DocumentRequestStatus.REJECTED]: 0,
+  };
+  for (const group of grouped) {
+    counts[group.status] = group._count;
+    counts.all += group._count;
+  }
+  return counts;
+}
+
+/** The most recent requests in a status, for the overview's short queues. */
+export async function getRecentRequestsByStatus(
+  status: DocumentRequestStatus,
+  take: number,
+): Promise<DocumentRequestDTO[]> {
+  const rows = await prisma.documentRequest.findMany({
+    where: { status },
+    orderBy: { createdAt: "desc" },
+    include: requestInclude,
+    take,
+  });
+  return rows.map(toRequestDTO);
 }
 
 export async function getDocumentRequestById(
@@ -54,31 +154,9 @@ export async function getDocumentRequestById(
 ): Promise<DocumentRequestDTO | null> {
   const row = await prisma.documentRequest.findUnique({
     where: { id },
-    include: {
-      requester: { select: { email: true } },
-      reviewedBy: { select: { name: true, firstName: true, lastName: true } },
-    },
+    include: requestInclude,
   });
-  if (!row) return null;
-
-  return {
-    id: row.id,
-    referenceNumber: row.referenceNumber,
-    documentName: row.documentName,
-    fee: Number(row.fee),
-    purpose: row.purpose,
-    method: row.method,
-    paymentReference: row.paymentReference,
-    proofImage: row.proofImage,
-    status: row.status,
-    note: row.note,
-    requesterName: row.requesterName,
-    requesterEmail: row.requester?.email ?? null,
-    reviewedByName: personName(row.reviewedBy),
-    reviewedAt: row.reviewedAt?.toISOString() ?? null,
-    releasedAt: row.releasedAt?.toISOString() ?? null,
-    createdAt: row.createdAt.toISOString(),
-  };
+  return row ? toRequestDTO(row) : null;
 }
 
 export async function getRequestSummary(): Promise<RequestSummary> {
@@ -107,9 +185,46 @@ export async function getDocumentTypes(): Promise<DocumentTypeDTO[]> {
     fee: Number(row.fee),
     turnaroundDays: row.turnaroundDays,
     active: row.active,
+    fields: parseDocumentFields(row.fields),
     requestCount: row._count.requests,
     updatedAt: row.updatedAt?.toISOString() ?? null,
   }));
+}
+
+/** A single document type with its request count, for the secretary editor. */
+export async function getDocumentTypeById(
+  id: string,
+): Promise<DocumentTypeDTO | null> {
+  const row = await prisma.documentType.findUnique({
+    where: { id },
+    include: { _count: { select: { requests: true } } },
+  });
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    fee: Number(row.fee),
+    turnaroundDays: row.turnaroundDays,
+    active: row.active,
+    fields: parseDocumentFields(row.fields),
+    requestCount: row._count.requests,
+    updatedAt: row.updatedAt?.toISOString() ?? null,
+  };
+}
+
+/** A single announcement for the secretary editor, or null if missing. */
+export async function getAnnouncementById(
+  id: string,
+): Promise<AnnouncementDTO | null> {
+  const row = await prisma.announcement.findUnique({
+    where: { id },
+    include: {
+      author: { select: { name: true, firstName: true, lastName: true } },
+    },
+  });
+  return row ? toAnnouncementDTO(row) : null;
 }
 
 export async function getAnnouncements(): Promise<AnnouncementDTO[]> {
@@ -131,6 +246,7 @@ export function toAnnouncementDTO(row: {
   pinned: boolean;
   published: boolean;
   place: string | null;
+  date: Date | null;
   createdAt: Date;
   author: { name: string | null; firstName: string | null; lastName: string | null } | null;
 }): AnnouncementDTO {
@@ -142,6 +258,7 @@ export function toAnnouncementDTO(row: {
     pinned: row.pinned,
     published: row.published,
     place: row.place,
+    date: row.date?.toISOString() ?? null,
     authorName: personName(row.author),
     createdAt: row.createdAt.toISOString(),
   };

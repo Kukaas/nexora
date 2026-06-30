@@ -13,7 +13,7 @@ export default async function TreasurerMethodsPage() {
   const uploadsEnabled = isCloudinaryConfigured();
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div>
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Payment methods</h1>
         <p className="text-sm text-muted-foreground text-pretty">

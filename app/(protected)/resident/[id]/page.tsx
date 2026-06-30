@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
+  ChevronRight,
   Clock,
   FilePlus2,
   MapPin,
@@ -22,19 +23,15 @@ import {
 import { getSession } from "@/lib/session";
 import { getResidencyStatus, type ResidencyStatus } from "@/lib/profile";
 import {
-  getActiveDocumentTypes,
   getMyDocumentRequests,
   getPublishedAnnouncements,
 } from "@/lib/documents-data";
-import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { AnnouncementsFeed } from "../_components/announcements-feed";
-import { ComingSoonButton } from "../_components/coming-soon-button";
-import { DocumentRequest } from "../_components/document-request";
 import { StatusBadge } from "../_components/status-badge";
-import { formatFullDate, formatShortDate, type RequestStatus } from "../_data";
+import { formatFullDate, formatShortDate, residentStatus } from "../_data";
 
 export const metadata: Metadata = {
   title: "Resident portal · Barangay Libtangin",
@@ -66,8 +63,7 @@ export default async function ResidentPage({
   // Verified residents get the live request tools and their own request list;
   // everyone sees the published announcements. Unverified residents skip the
   // request-only queries since they can't transact yet.
-  const [docTypes, myRequests, announcements] = await Promise.all([
-    verified ? getActiveDocumentTypes() : Promise.resolve([]),
+  const [myRequests, announcements] = await Promise.all([
     verified ? getMyDocumentRequests(session.user.id) : Promise.resolve([]),
     getPublishedAnnouncements(),
   ]);
@@ -94,7 +90,29 @@ export default async function ResidentPage({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-8 lg:space-y-10">
           {verified ? (
-            <DocumentRequest types={docTypes} basePath={`/resident/${id}`} />
+            <section id="request" className="scroll-mt-20">
+              <Link
+                href={`/resident/${id}/request`}
+                className="group flex items-center gap-4 rounded-4xl border border-border bg-card p-5 shadow-sm ring-1 ring-foreground/5 transition-colors outline-none hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-3 focus-visible:ring-ring/40 sm:p-6 dark:ring-foreground/10"
+              >
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+                  <FilePlus2 className="size-6" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-lg font-semibold tracking-tight">
+                    Request a document
+                  </span>
+                  <span className="block text-sm text-muted-foreground text-pretty">
+                    Apply online and track it here. No need to line up at the
+                    hall.
+                  </span>
+                </span>
+                <ChevronRight
+                  aria-hidden
+                  className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+                />
+              </Link>
+            </section>
           ) : (
             <ReviewNotice status={residency} />
           )}
@@ -108,14 +126,16 @@ export default async function ResidentPage({
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between gap-2">
                     My requests
-                    <ComingSoonButton
-                      feature="Request history"
-                      variant="ghost"
-                      size="sm"
-                      className="-mr-1.5 text-muted-foreground"
-                    >
-                      View all
-                    </ComingSoonButton>
+                    {myRequests.length > 0 && (
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="sm"
+                        className="-mr-1.5 text-muted-foreground"
+                      >
+                        <Link href={`/resident/${id}/requests`}>View all</Link>
+                      </Button>
+                    )}
                   </CardTitle>
                   <CardDescription>
                     Documents you&apos;ve requested and where they stand.
@@ -156,10 +176,10 @@ export default async function ResidentPage({
                 </CardContent>
                 <CardFooter>
                   <Button asChild className="w-full" size="lg">
-                    <a href="#request">
+                    <Link href={`/resident/${id}/request`}>
                       <FilePlus2 />
                       Request a document
-                    </a>
+                    </Link>
                   </Button>
                 </CardFooter>
               </Card>
@@ -222,20 +242,6 @@ export default async function ResidentPage({
       </div>
     </div>
   );
-}
-
-/** Map a document request's lifecycle status onto the resident-facing badge. */
-function residentStatus(status: DocumentRequestStatus): RequestStatus {
-  switch (status) {
-    case DocumentRequestStatus.READY:
-      return "issued";
-    case DocumentRequestStatus.PROCESSING:
-      return "processing";
-    case DocumentRequestStatus.REJECTED:
-      return "action";
-    default:
-      return "submitted";
-  }
 }
 
 /** The residency-verification chip shown next to the date in the greeting. */

@@ -40,7 +40,7 @@ export function SecretaryShell({
           </header>
 
           <div className="flex-1 bg-muted/30">
-            <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+            <div className="mx-auto w-full max-w-[96rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
               {children}
             </div>
           </div>

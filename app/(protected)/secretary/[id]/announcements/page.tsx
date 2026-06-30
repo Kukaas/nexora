@@ -7,11 +7,16 @@ export const metadata: Metadata = {
   title: "Announcements · Secretary · Barangay Libtangin",
 };
 
-export default async function SecretaryAnnouncementsPage() {
+export default async function SecretaryAnnouncementsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const announcements = await getAnnouncements();
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div>
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Announcements</h1>
         <p className="text-sm text-muted-foreground text-pretty">
@@ -21,7 +26,10 @@ export default async function SecretaryAnnouncementsPage() {
       </header>
 
       <div className="mt-8">
-        <AnnouncementsManager announcements={announcements} />
+        <AnnouncementsManager
+          announcements={announcements}
+          basePath={`/secretary/${id}/announcements`}
+        />
       </div>
     </div>
   );

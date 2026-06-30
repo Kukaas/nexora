@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
@@ -21,16 +23,21 @@ export function DocumentFeeActions({
   status,
   backHref,
   verifyLabel,
+  requiresOr,
 }: {
   requestId: string;
   status: DocumentRequestStatus;
   backHref: string;
   /** "Verify payment" for paid documents, "Approve request" for free ones. */
   verifyLabel: string;
+  /** Paid requests must record an OR number before they can be verified. */
+  requiresOr: boolean;
 }) {
   const router = useRouter();
-  const [rejecting, setRejecting] = useState(false);
+  const orId = useId();
+  const [mode, setMode] = useState<"idle" | "verifying" | "rejecting">("idle");
   const [note, setNote] = useState("");
+  const [orNumber, setOrNumber] = useState("");
   const [pending, setPending] = useState<null | "VERIFIED" | "REJECTED">(null);
 
   const decided =
@@ -42,11 +49,17 @@ export function DocumentFeeActions({
       toast.error("Add a short reason so the resident knows what to fix.");
       return;
     }
+    if (decision === "VERIFIED" && requiresOr && !orNumber.trim()) {
+      toast.error("Enter the OR number to verify this payment.");
+      return;
+    }
     setPending(decision);
     const result = await reviewDocumentRequest({
       requestId,
       decision,
       note: decision === "REJECTED" ? note.trim() : undefined,
+      orNumber:
+        decision === "VERIFIED" && requiresOr ? orNumber.trim() : undefined,
     });
     setPending(null);
 
@@ -71,7 +84,49 @@ export function DocumentFeeActions({
     );
   }
 
-  if (rejecting) {
+  if (mode === "verifying") {
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={orId}>OR number</Label>
+          <Input
+            id={orId}
+            autoFocus
+            value={orNumber}
+            onChange={(e) => setOrNumber(e.target.value)}
+            placeholder="e.g. 0042817"
+            className="font-mono"
+          />
+          <p className="text-xs text-muted-foreground">
+            The Official Receipt number issued for this payment.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              setMode("idle");
+              setOrNumber("");
+            }}
+            disabled={pending !== null}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={() => submit("VERIFIED")}
+            disabled={pending !== null}
+          >
+            {pending === "VERIFIED" && <Spinner />}
+            {verifyLabel}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "rejecting") {
     return (
       <div className="flex flex-col gap-3">
         <Textarea
@@ -87,7 +142,7 @@ export function DocumentFeeActions({
             variant="outline"
             className="flex-1"
             onClick={() => {
-              setRejecting(false);
+              setMode("idle");
               setNote("");
             }}
             disabled={pending !== null}
@@ -113,14 +168,14 @@ export function DocumentFeeActions({
       <Button
         variant="outline"
         className="flex-1"
-        onClick={() => setRejecting(true)}
+        onClick={() => setMode("rejecting")}
         disabled={pending !== null}
       >
         {status === DocumentRequestStatus.REJECTED ? "Edit reason" : "Send back"}
       </Button>
       <Button
         className="flex-1"
-        onClick={() => submit("VERIFIED")}
+        onClick={() => (requiresOr ? setMode("verifying") : submit("VERIFIED"))}
         disabled={pending !== null}
       >
         {pending === "VERIFIED" && <Spinner />}

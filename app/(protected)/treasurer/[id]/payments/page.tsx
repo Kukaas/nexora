@@ -8,10 +8,10 @@ import { formatPeso } from "../../_components/treasurer-ui";
 import { DocumentFeesReview } from "../../_components/document-fees-review";
 
 export const metadata: Metadata = {
-  title: "Document fees · Treasury · Barangay Libtangin",
+  title: "Payments · Treasury · Barangay Libtangin",
 };
 
-export default async function TreasurerDocumentFeesPage({
+export default async function TreasurerPaymentsPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -23,9 +23,9 @@ export default async function TreasurerDocumentFeesPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Document fees</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Payments</h1>
         <p className="text-sm text-muted-foreground text-pretty">
           Verify each resident&apos;s payment, then the secretary prepares the
           document.
@@ -48,7 +48,7 @@ export default async function TreasurerDocumentFeesPage({
       <div className="mt-8">
         <DocumentFeesReview
           requests={requests}
-          basePath={`/treasurer/${id}/document-fees`}
+          basePath={`/treasurer/${id}/payments`}
         />
       </div>
     </div>
