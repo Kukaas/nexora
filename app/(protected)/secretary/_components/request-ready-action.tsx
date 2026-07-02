@@ -33,6 +33,7 @@ export function RequestReadyAction({
   const run = async (
     action: typeof markRequestReady,
     success: string,
+    returnToList = false,
   ) => {
     setPending(true);
     const result = await action({ requestId });
@@ -42,8 +43,8 @@ export function RequestReadyAction({
       return;
     }
     toast.success(success);
-    router.push(backHref);
-    router.refresh();
+    if (returnToList) router.push(backHref);
+    else router.refresh();
   };
 
   if (status === DocumentRequestStatus.PROCESSING) {
@@ -67,7 +68,7 @@ export function RequestReadyAction({
         <Button
           className="w-full"
           onClick={() =>
-            run(markRequestClaimed, "Marked as claimed by the resident.")
+            run(markRequestClaimed, "Marked as claimed by the resident.", true)
           }
           disabled={pending}
         >

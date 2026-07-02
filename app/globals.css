@@ -151,3 +151,255 @@
     animation: nx-float 7s ease-in-out infinite;
   }
 }
+
+/* ── Document layout (designer surface + printed sheet) ─────────────────────
+   `.nx-doc` is the white A4-style sheet shared by the Tiptap designer and the
+   merge-print view, so what the secretary designs is what prints. Deliberately
+   light/serif and independent of the app theme — a document is a document. */
+.nx-doc {
+  position: relative; /* anchor for freely-placed (absolute) images */
+  width: min(794px, 100%);
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #111111;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  padding: 48px 56px;
+  border-radius: 8px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Fill the sheet down to a full page so the surface reads as real paper. The
+   sheet sets `--nx-page-h` to the chosen paper height (padding is 48px × 2). */
+.nx-doc .nx-doc-editor {
+  min-height: calc(var(--nx-page-h, 900px) - 96px);
+}
+/* The print/preview sheet needs a *definite* height (not just min-height) so a
+   floating element's `top: Y%` resolves against the full page — otherwise every
+   absolutely-placed image/text box collapses to the top. In the editor this
+   definiteness comes from `.nx-doc-editor`'s min-height; the print sheet has no
+   such child, so it sets the page height itself. */
+.nx-doc-print {
+  height: var(--nx-page-h, auto);
+}
+.nx-doc .ProseMirror:focus {
+  outline: none;
+}
+
+.nx-doc h1 {
+  font-size: 1.6em;
+  font-weight: 700;
+  margin: 0 0 0.4em;
+}
+.nx-doc h2 {
+  font-size: 1.35em;
+  font-weight: 700;
+  margin: 0 0 0.35em;
+}
+.nx-doc h3 {
+  font-size: 1.15em;
+  font-weight: 700;
+  margin: 0 0 0.3em;
+}
+.nx-doc p {
+  margin: 0 0 0.6em;
+}
+.nx-doc ul {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0 0 0.6em;
+}
+.nx-doc ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0 0 0.6em;
+}
+.nx-doc a {
+  color: #0645ad;
+  text-decoration: underline;
+}
+
+/* Tables read like a document: hard borders, padded cells, shaded header. */
+.nx-doc .tableWrapper {
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.nx-doc table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.nx-doc td,
+.nx-doc th {
+  border: 1px solid #999999;
+  padding: 6px 8px;
+  vertical-align: top;
+  position: relative;
+}
+.nx-doc th {
+  background: #f2f2f2;
+  font-weight: 600;
+  text-align: start;
+}
+.nx-doc .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--primary);
+  pointer-events: none;
+}
+.nx-doc .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+}
+
+/* Freely-placed images float over the page (position/size in %); in stored /
+   printed HTML they're a bare `<img data-floating style="position:absolute…">`.
+   The editor wraps each in `.nx-float-image` (also absolute, set inline). */
+.nx-doc img {
+  max-width: 100%;
+  height: auto;
+}
+.nx-doc img[data-floating] {
+  height: auto;
+}
+.nx-float-image img {
+  user-select: none;
+}
+/* Freely-placed text boxes use the same percentage positioning as floating
+   images. Editor-only controls are React node-view chrome, so they are not
+   included in the saved HTML or print output. */
+.nx-float-text {
+  z-index: 4;
+  min-height: 1.8em;
+  border: 1px dashed color-mix(in oklab, var(--primary) 55%, transparent);
+  background: rgba(255, 255, 255, 0.72);
+}
+.nx-float-text:focus-within,
+.nx-float-text[data-busy] {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.nx-float-text-content {
+  min-height: 1.8em;
+  padding: 2px 4px;
+}
+.nx-float-text-content > :last-child {
+  margin-bottom: 0;
+}
+.nx-float-toolbar {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--primary) 55%, transparent);
+  border-radius: 5px 5px 0 0;
+  background: #ffffff;
+  color: #444444;
+}
+.nx-float-grip,
+.nx-float-del {
+  display: inline-flex;
+  width: 26px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+}
+.nx-float-grip {
+  cursor: grab;
+}
+.nx-float-del {
+  cursor: pointer;
+  color: #b42318;
+}
+.nx-float-grip:hover,
+.nx-float-del:hover {
+  background: #f2f2f2;
+}
+.nx-float-resize {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 15px;
+  height: 15px;
+  cursor: nwse-resize;
+  border: 2px solid var(--primary);
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+/* Stored/printed floating text has no node-view wrapper, just this attribute. */
+.nx-doc [data-floating-text] {
+  box-sizing: border-box;
+}
+
+/* Merge-field chip — only visible while designing; the print view swaps each
+   placeholder for real text, so no chip ever reaches paper. Deliberately loud
+   (warm highlight, sans-serif, brace markers) so placeholders are unmistakable
+   against the serif document body. */
+.nx-merge {
+  border-radius: 5px;
+  padding: 0.05em 0.4em;
+  background: color-mix(in oklab, var(--primary) 32%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 70%, #7a5600);
+  color: #6b4a00;
+  font-family: var(--font-sans);
+  font-size: 0.88em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.nx-merge::before {
+  content: "{ ";
+  opacity: 0.55;
+}
+.nx-merge::after {
+  content: " }";
+  opacity: 0.55;
+}
+/* A selected chip in the editor gets a clear focus ring. */
+.nx-doc .nx-merge.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+/* ── Print: only the document sheet reaches paper ──────────────────────────── */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  [data-print-hide] {
+    display: none !important;
+  }
+  /* Hide all app chrome, then reveal just the sheet and its contents. */
+  body * {
+    visibility: hidden;
+  }
+  .nx-doc,
+  .nx-doc * {
+    visibility: visible;
+  }
+  .nx-doc-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    /* Definite height so floating `top: Y%` resolves; clip to a single page. */
+    height: var(--nx-page-h, auto);
+    min-height: 0;
+    overflow: hidden;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}

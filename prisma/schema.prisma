@@ -178,6 +178,9 @@ model DocumentType {
   active                           Boolean          @default(true)
 
   fields                           Json             @default("[]")
+  template                         String?          @db.Text
+  paperSize                        String           @default("A4") @map("paper_size")
+  orientation                      String           @default("portrait")
 
   requests                         DocumentRequest[]
 
@@ -229,6 +232,17 @@ model DocumentRequest {
   @@index([status])
   @@index([requesterId])
   @@map("document_request")
+}
+
+model MediaAsset {
+  id                               String            @id @default(uuid())
+  url                              String
+  name                             String
+  createdById                      String?           @map("created_by_id")
+  createdAt                        DateTime          @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("media_asset")
 }
 
 model Announcement {

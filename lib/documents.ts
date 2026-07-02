@@ -67,6 +67,12 @@ export type DocumentTypeDTO = {
   active: boolean;
   /** Custom fields residents fill in when requesting this document. */
   fields: DocumentField[];
+  /** Tiptap HTML of the printed document layout; null until a layout is designed. */
+  template: string | null;
+  /** Paper size the layout is designed and printed at ("A4" | "Letter" | "Legal"). */
+  paperSize: string;
+  /** Page layout ("portrait" | "landscape"). */
+  orientation: string;
   /** How many requests reference this type, so the UI can warn before retiring. */
   requestCount: number;
   updatedAt: string | null;
@@ -131,6 +137,14 @@ export type RequestPage = {
   page: number;
   pageSize: number;
   pageCount: number;
+};
+
+/** An image in the reusable document-designer media library. */
+export type MediaAssetDTO = {
+  id: string;
+  url: string;
+  name: string;
+  createdAt: string;
 };
 
 export type AnnouncementDTO = {
@@ -231,6 +245,125 @@ export function formatFieldValue(field: {
     }
   }
   return field.value;
+}
+
+/**
+ * Placeholders a template can reference that don't come from the resident's
+ * custom-field answers. The secretary drops these into the layout and they're
+ * resolved per request at print time. `key` is the stable token stored in the
+ * HTML (`data-key`); `label` is what the chip and the insert menu show.
+ */
+export const MERGE_SYSTEM_TOKENS = [
+  { key: "requesterName", label: "Requester name" },
+  { key: "documentName", label: "Document name" },
+  { key: "referenceNumber", label: "Reference number" },
+  { key: "orNumber", label: "OR number" },
+  { key: "fee", label: "Fee" },
+  { key: "dateIssued", label: "Date issued" },
+] as const;
+
+export type MergeSystemKey = (typeof MERGE_SYSTEM_TOKENS)[number]["key"];
+
+/**
+ * The paper sizes a document layout can be designed and printed at. `width`/
+ * `height` drive the on-screen sheet; `css` is the named size for `@page` when
+ * printing. Portrait only — barangay documents are effectively always portrait.
+ */
+export const PAPER_SIZES = [
+  { value: "A4", label: "A4", css: "A4", width: "210mm", height: "297mm" },
+  {
+    value: "Letter",
+    label: "Letter",
+    css: "letter",
+    width: "216mm",
+    height: "279mm",
+  },
+  {
+    value: "Legal",
+    label: "Legal",
+    css: "legal",
+    width: "216mm",
+    height: "356mm",
+  },
+] as const;
+
+export type PaperSize = (typeof PAPER_SIZES)[number]["value"];
+
+/** Look up a paper size by value, falling back to A4 for anything unknown. */
+export function paperSizeOf(value: string): (typeof PAPER_SIZES)[number] {
+  return PAPER_SIZES.find((s) => s.value === value) ?? PAPER_SIZES[0];
+}
+
+export const ORIENTATIONS = [
+  { value: "portrait", label: "Portrait" },
+  { value: "landscape", label: "Landscape" },
+] as const;
+
+export type Orientation = (typeof ORIENTATIONS)[number]["value"];
+
+/**
+ * Resolve a paper size + orientation into the values the sheet and print need:
+ * `width`/`height` are the on-screen sheet dimensions (the long edge becomes the
+ * width in landscape); `css` is the `@page size` token (e.g. "A4 landscape").
+ */
+export function paperLayout(
+  sizeValue: string,
+  orientation: string,
+): { width: string; height: string; css: string } {
+  const size = paperSizeOf(sizeValue);
+  const landscape = orientation === "landscape";
+  return {
+    width: landscape ? size.height : size.width,
+    height: landscape ? size.width : size.height,
+    css: landscape ? `${size.css} landscape` : size.css,
+  };
+}
+
+/** Format a peso amount the way the printed document should show it. */
+function formatPeso(amount: number): string {
+  return amount.toLocaleString("en-PH", {
+    style: "currency",
+    currency: "PHP",
+  });
+}
+
+/** Format an ISO date (or "now") as a long en-PH date for a printed document. */
+function formatIssuedDate(iso: string | null): string {
+  const date = iso ? new Date(iso) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/**
+ * Resolve every placeholder a template might reference for one request, keyed by
+ * the token stored in the HTML: custom fields by their **label** (matching the
+ * snapshot on the request), plus the system tokens above. The print view looks
+ * each `data-key` up in this map. Missing custom answers resolve to "" so a
+ * renamed/removed field prints blank rather than leaking the placeholder.
+ */
+export function buildMergeContext(
+  request: DocumentRequestDTO,
+): Record<string, string> {
+  const context: Record<string, string> = {};
+
+  // Custom fields, keyed by label (the request stores answers by label).
+  for (const field of request.fieldValues) {
+    context[field.label] = formatFieldValue(field);
+  }
+
+  // System tokens.
+  context.requesterName = request.requesterName;
+  context.documentName = request.documentName;
+  context.referenceNumber = request.referenceNumber;
+  context.orNumber = request.orNumber ?? "";
+  context.fee = request.fee > 0 ? formatPeso(request.fee) : "Free";
+  context.dateIssued = formatIssuedDate(request.releasedAt);
+
+  return context;
 }
 
 /** Turnaround in plain language, e.g. "Ready same day" / "Ready in 2 days". */
