@@ -12,6 +12,8 @@
  * Idempotent: skips the requests/announcements when they already exist, and
  * upserts the catalog by name, so it won't duplicate rows on a re-run.
  */
+import { readFileSync } from "node:fs";
+
 import { prisma } from "@/lib/prisma";
 import {
   AnnouncementCategory,
@@ -21,23 +23,51 @@ import {
 
 const proof = (seed: string) => `https://picsum.photos/seed/${seed}/600/900`;
 
+/**
+ * The designed Barangay Clearance layout, captured from the document editor.
+ * The HTML is the absolute-positioned template (letterhead images, boxes, and
+ * field placeholders bound by the exact field ids below); the images are
+ * Cloudinary URLs, so the layout renders the same wherever this is seeded.
+ * Keeping the field ids identical is what lets the template's placeholders bind
+ * to the right values.
+ */
+const CLEARANCE_TEMPLATE = readFileSync(
+  new URL("./data/barangay-clearance.html", import.meta.url),
+  "utf8",
+);
+
+const CLEARANCE_FIELDS = [
+  { id: "clr-name", label: "Full name", type: "text", required: true, options: [] },
+  { id: "clr-birth", label: "Birth date", type: "date", required: true, options: [] },
+  {
+    id: "clr-civil",
+    label: "Civil status",
+    type: "select",
+    required: true,
+    options: ["Single", "Married", "Widowed", "Separated"],
+  },
+  {
+    id: "7b4fb0c9-63df-4e76-8b80-17c647de86a3",
+    label: "Purok",
+    type: "select",
+    required: true,
+    options: ["Purok 1", "Purok 2", "Purok 3", "Purok 4", "Purok 5", "Purok 6", "Purok 7"],
+  },
+  {
+    id: "41bbdbc6-0b22-4966-8104-419948e983c6",
+    label: "Place of Birth",
+    type: "text",
+    required: true,
+    options: [],
+  },
+];
+
 const DOCUMENT_TYPES = [
   {
     name: "Barangay Clearance",
     description: "For employment, permits, and IDs.",
     fee: "50.00",
     turnaroundDays: 2,
-    fields: [
-      { id: "clr-name", label: "Full name", type: "text", required: true, options: [] },
-      { id: "clr-birth", label: "Birth date", type: "date", required: true, options: [] },
-      {
-        id: "clr-civil",
-        label: "Civil status",
-        type: "select",
-        required: true,
-        options: ["Single", "Married", "Widowed", "Separated"],
-      },
-    ],
   },
   {
     name: "Certificate of Residency",
@@ -169,16 +199,27 @@ const ANNOUNCEMENTS = [
 ];
 
 async function seed() {
-  // 1. Catalog — upsert by name so re-runs keep one row per document.
+  // 1. Catalog — upsert by name so re-runs keep one row per document. The
+  // Barangay Clearance also carries the designed template + its fields, applied
+  // on create and on re-seed so the layout is always restored.
   const types = await Promise.all(
-    DOCUMENT_TYPES.map((t) =>
-      prisma.documentType.upsert({
+    DOCUMENT_TYPES.map((t) => {
+      const layout =
+        t.name === "Barangay Clearance"
+          ? {
+              template: CLEARANCE_TEMPLATE,
+              fields: CLEARANCE_FIELDS,
+              paperSize: "Letter",
+              orientation: "portrait",
+            }
+          : {};
+      return prisma.documentType.upsert({
         where: { name: t.name },
-        update: {},
-        create: t,
+        update: layout,
+        create: { ...t, ...layout },
         select: { id: true, name: true, fee: true },
-      }),
-    ),
+      });
+    }),
   );
   const typeByName = new Map(types.map((t) => [t.name, t]));
   console.log(`✓ Catalog ready (${types.length} document types).`);

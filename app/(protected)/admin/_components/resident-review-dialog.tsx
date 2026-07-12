@@ -35,7 +35,8 @@ const ID_TYPE_LABEL: Record<IDType, string> = {
 export type SubmittedId = {
   type: IDType;
   number: string;
-  image: string;
+  frontImage: string;
+  backImage: string | null;
 };
 
 export function ResidentReviewDialog({
@@ -106,27 +107,28 @@ export function ResidentReviewDialog({
           <AccountStatusBadge status={resident.status} className="shrink-0" />
         </div>
 
-        {/* The uploaded ID photo. */}
-        <a
-          href={resident.submittedId.image}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group relative block overflow-hidden rounded-2xl border border-border bg-muted outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={resident.submittedId.image}
-            alt={`${resident.name}'s submitted ID`}
-            className="max-h-72 w-full object-contain"
+        {/* The uploaded ID photos. */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <IdPhotoLink
+            src={resident.submittedId.frontImage}
+            side="Front"
+            name={resident.name}
           />
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-medium text-foreground opacity-0 ring-1 ring-border transition-opacity group-hover:opacity-100">
-            <ExternalLink className="size-3" aria-hidden />
-            Open
-          </span>
-        </a>
+          {resident.submittedId.backImage ? (
+            <IdPhotoLink
+              src={resident.submittedId.backImage}
+              side="Back"
+              name={resident.name}
+            />
+          ) : (
+            <div className="flex min-h-32 items-center justify-center rounded-2xl border border-dashed border-border bg-muted/40 p-3 text-center text-xs text-muted-foreground">
+              No back photo on file
+            </div>
+          )}
+        </div>
 
         <p className="text-xs text-muted-foreground">
-          Check that the photo is clear and the name and ID number match this
+          Check that both sides are clear and the name and ID number match this
           resident before approving. Approving lets them request documents.
         </p>
 
@@ -164,5 +166,39 @@ export function ResidentReviewDialog({
         <DialogClose className="sr-only">Close</DialogClose>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** One side of the submitted ID: a labelled photo that opens full-size. */
+function IdPhotoLink({
+  src,
+  side,
+  name,
+}: {
+  src: string;
+  side: "Front" | "Back";
+  name: string;
+}) {
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group relative block overflow-hidden rounded-2xl border border-border bg-muted outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`${name}'s submitted ID, ${side.toLowerCase()}`}
+        className="max-h-56 w-full object-contain"
+      />
+      <span className="absolute left-2 top-2 inline-flex items-center rounded-full bg-background/90 px-2 py-0.5 text-xs font-medium text-foreground ring-1 ring-border">
+        {side}
+      </span>
+      <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-1 text-xs font-medium text-foreground opacity-0 ring-1 ring-border transition-opacity group-hover:opacity-100">
+        <ExternalLink className="size-3" aria-hidden />
+        Open
+      </span>
+    </a>
   );
 }

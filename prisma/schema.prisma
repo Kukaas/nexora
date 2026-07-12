@@ -106,7 +106,8 @@ model ID {
   id                              String            @id @default(uuid())
   type                            IDType
   number                          String
-  image                           String
+  frontImage                      String            @map("front_image")
+  backImage                       String?           @map("back_image")
   status                          IDStatus          @default(PENDING)
   reviewedAt                      DateTime?         @map("reviewed_at")
 

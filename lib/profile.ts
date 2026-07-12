@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { IDStatus } from "@/app/generated/prisma/enums";
+import { IDStatus, type IDType } from "@/app/generated/prisma/enums";
 
 /**
  * Whether the resident has finished the setup/verification step. Read straight
@@ -58,4 +58,123 @@ export async function mustChangePassword(userId: string): Promise<boolean> {
     select: { mustChangePassword: true },
   });
   return Boolean(user?.mustChangePassword);
+}
+
+/**
+ * Which sign-in methods a user has. Better Auth stores an email/password login
+ * as a "credential" account and a Google login as a "google" account. Only a
+ * user with a credential account can change their password; a Google-only user
+ * has no password to change.
+ */
+export type SignInMethods = { hasPassword: boolean; hasGoogle: boolean };
+
+export async function getSignInMethods(
+  userId: string,
+): Promise<SignInMethods> {
+  const accounts = await prisma.account.findMany({
+    where: { userId },
+    select: { providerId: true },
+  });
+  return {
+    hasPassword: accounts.some((a) => a.providerId === "credential"),
+    hasGoogle: accounts.some((a) => a.providerId === "google"),
+  };
+}
+
+export type ResidentIdRecord = {
+  type: IDType;
+  number: string;
+  frontImage: string;
+  backImage: string | null;
+  status: IDStatus;
+  reviewedAt: string | null;
+  createdAt: string;
+};
+
+export type ResidentProfile = {
+  firstName: string | null;
+  middleName: string | null;
+  lastName: string | null;
+  name: string | null;
+  email: string;
+  image: string | null;
+  birthDate: string | null;
+  mobileNumber: string | null;
+  id: ResidentIdRecord | null;
+  residency: ResidencyStatus;
+  signIn: SignInMethods;
+};
+
+/**
+ * Everything the resident profile page needs in one read: the editable personal
+ * details, the government ID currently on file (the most recent one, which is
+ * what verification hinges on), the derived residency status, and the sign-in
+ * methods that decide whether a "change password" option is offered.
+ */
+export async function getResidentProfile(
+  userId: string,
+): Promise<ResidentProfile | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      firstName: true,
+      middleName: true,
+      lastName: true,
+      name: true,
+      email: true,
+      image: true,
+      birthDate: true,
+      mobileNumber: true,
+      ids: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          type: true,
+          number: true,
+          frontImage: true,
+          backImage: true,
+          status: true,
+          reviewedAt: true,
+          createdAt: true,
+        },
+      },
+      accounts: { select: { providerId: true } },
+    },
+  });
+  if (!user) return null;
+
+  const latestId = user.ids[0];
+  const residency: ResidencyStatus =
+    latestId?.status === IDStatus.APPROVED
+      ? "approved"
+      : latestId?.status === IDStatus.REJECTED
+        ? "rejected"
+        : "pending";
+
+  return {
+    firstName: user.firstName,
+    middleName: user.middleName,
+    lastName: user.lastName,
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    birthDate: user.birthDate?.toISOString() ?? null,
+    mobileNumber: user.mobileNumber,
+    id: latestId
+      ? {
+          type: latestId.type,
+          number: latestId.number,
+          frontImage: latestId.frontImage,
+          backImage: latestId.backImage,
+          status: latestId.status,
+          reviewedAt: latestId.reviewedAt?.toISOString() ?? null,
+          createdAt: latestId.createdAt.toISOString(),
+        }
+      : null,
+    residency,
+    signIn: {
+      hasPassword: user.accounts.some((a) => a.providerId === "credential"),
+      hasGoogle: user.accounts.some((a) => a.providerId === "google"),
+    },
+  };
 }

@@ -6,12 +6,15 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { AlertCircle, CalendarIcon } from "lucide-react";
+import { AlertCircle, CalendarIcon, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
-import { completeResidentSetup, type SetupInput } from "@/lib/resident-actions";
+import {
+  updateResidentProfile,
+  type UpdateProfileInput,
+} from "@/lib/resident-actions";
 import { cn } from "@/lib/utils";
-import { IdPhotoUpload } from "@/components/id-photo-upload";
+import { AvatarUpload } from "@/components/avatar-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -22,12 +25,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Field,
   FieldDescription,
@@ -38,18 +45,9 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 
-const ID_TYPES = [
-  { value: "DRIVER_LICENSE", label: "Driver's license" },
-  { value: "PASSPORT", label: "Passport" },
-  { value: "SSS", label: "SSS ID" },
-  { value: "GSIS", label: "GSIS ID" },
-  { value: "PRC", label: "PRC ID" },
-  { value: "OTHERS", label: "Other government ID" },
-] as const;
-
 const PH_MOBILE = /^(09\d{9}|\+?639\d{8})$/;
 
-const setupSchema = z.object({
+const schema = z.object({
   firstName: z.string().trim().min(1, "Enter your first name."),
   middleName: z.string().trim().optional(),
   lastName: z.string().trim().min(1, "Enter your last name."),
@@ -64,15 +62,32 @@ const setupSchema = z.object({
       (v) => PH_MOBILE.test(v.replace(/[\s\-()]/g, "")),
       "Enter a valid PH mobile number, e.g. 0917 123 4567.",
     ),
-  idType: z.string().min(1, "Choose your ID type."),
-  idNumber: z.string().trim().min(1, "Enter your ID number."),
-  idFront: z.string().url("Upload the front of your ID."),
-  idBack: z.string().url("Upload the back of your ID."),
 });
 
-type SetupValues = z.infer<typeof setupSchema>;
+type Values = z.infer<typeof schema>;
 
-export function SetupForm({ email }: { email: string }) {
+export type ProfileInitial = {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  birthDate: string | null;
+  mobileNumber: string;
+  image: string | null;
+};
+
+const norm = (v: string) => v.trim().toLowerCase();
+
+export function ProfileForm({
+  initial,
+  initials,
+  residencyApproved,
+  backHref,
+}: {
+  initial: ProfileInitial;
+  initials: string;
+  residencyApproved: boolean;
+  backHref: string;
+}) {
   const router = useRouter();
   const ids = {
     firstName: useId(),
@@ -80,34 +95,29 @@ export function SetupForm({ email }: { email: string }) {
     lastName: useId(),
     birthDate: useId(),
     mobile: useId(),
-    idType: useId(),
-    idNumber: useId(),
   };
 
+  const [avatar, setAvatar] = useState<string | null>(initial.image);
   const [formError, setFormError] = useState<string | null>(null);
   const [dobOpen, setDobOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [pending, setPending] = useState<Values | null>(null);
   const alertRef = useRef<HTMLDivElement>(null);
 
   const {
     control,
     register,
     handleSubmit,
-    setValue,
-    watch,
-    clearErrors,
     formState: { errors, isSubmitting },
-  } = useForm<SetupValues>({
-    resolver: zodResolver(setupSchema),
+  } = useForm<Values>({
+    resolver: zodResolver(schema),
     defaultValues: {
-      firstName: "",
-      middleName: "",
-      lastName: "",
-      birthDate: undefined,
-      mobileNumber: "",
-      idType: "",
-      idNumber: "",
-      idFront: "",
-      idBack: "",
+      firstName: initial.firstName,
+      middleName: initial.middleName,
+      lastName: initial.lastName,
+      birthDate: initial.birthDate ? new Date(initial.birthDate) : undefined,
+      mobileNumber: initial.mobileNumber,
     },
   });
 
@@ -115,65 +125,103 @@ export function SetupForm({ email }: { email: string }) {
     if (formError) alertRef.current?.focus();
   }, [formError]);
 
-  const idFront = watch("idFront");
-  const idBack = watch("idBack");
+  const legalNameChanged = (v: Values) =>
+    norm(v.firstName) !== norm(initial.firstName) ||
+    norm(v.middleName ?? "") !== norm(initial.middleName) ||
+    norm(v.lastName) !== norm(initial.lastName);
 
-  const onSubmit = async (values: SetupValues) => {
+  const save = async (values: Values) => {
     setFormError(null);
-    const payload: SetupInput = {
-      ...values,
+    const payload: UpdateProfileInput = {
+      firstName: values.firstName,
+      middleName: values.middleName,
+      lastName: values.lastName,
       birthDate: format(values.birthDate, "yyyy-MM-dd"),
-      idType: values.idType as SetupInput["idType"],
+      mobileNumber: values.mobileNumber,
+      image: avatar,
     };
-    const result = await completeResidentSetup(payload);
+    const result = await updateResidentProfile(payload);
     if (!result.ok) {
       setFormError(result.error);
+      setConfirmOpen(false);
       return;
     }
-    toast.success("Profile submitted. The barangay will verify your ID.");
-    router.push("/resident");
+    toast.success(
+      result.reverified
+        ? "Profile saved. Your ID goes back for verification."
+        : "Profile saved.",
+    );
+    router.push(backHref);
     router.refresh();
   };
 
-  return (
-    <div>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-balance">
-          Complete your profile
-        </h1>
-        <p className="text-sm text-muted-foreground text-pretty">
-          A few details for{" "}
-          <span className="font-medium text-foreground break-all">{email}</span>,
-          so the barangay can verify your account.
-        </p>
-      </div>
+  const onValid = async (values: Values) => {
+    // Changing the legal name on a verified account re-opens ID verification;
+    // confirm that consequence before saving.
+    if (residencyApproved && legalNameChanged(values)) {
+      setPending(values);
+      setConfirmOpen(true);
+      return;
+    }
+    await save(values);
+  };
 
+  const runConfirmed = async () => {
+    if (!pending) return;
+    setConfirming(true);
+    await save(pending);
+    setConfirming(false);
+  };
+
+  const busy = isSubmitting || confirming;
+
+  return (
+    <>
       {formError && (
         <div
           ref={alertRef}
           role="alert"
           tabIndex={-1}
-          className="mt-6 flex items-start gap-2.5 rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive outline-none"
+          className="mb-6 flex items-start gap-2.5 rounded-2xl bg-destructive/10 px-4 py-3 text-sm text-destructive outline-none"
         >
           <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span>{formError}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-7">
+      <form onSubmit={handleSubmit(onValid)} noValidate>
         <FieldGroup>
-          {/* Name */}
+          <FieldSet>
+            <FieldLegend variant="label">Profile photo</FieldLegend>
+            <AvatarUpload
+              value={avatar}
+              initials={initials}
+              disabled={busy}
+              onChange={setAvatar}
+              onError={() => toast.error("Upload didn't finish. Please try again.")}
+            />
+          </FieldSet>
+
           <FieldSet>
             <FieldLegend variant="label">Your name</FieldLegend>
+            {residencyApproved && (
+              <p className="flex items-start gap-2 rounded-2xl bg-accent/60 px-3.5 py-2.5 text-xs text-accent-foreground text-pretty">
+                <ShieldAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <span>
+                  Changing your first, middle, or last name sends your account
+                  back for ID verification, so you won&apos;t be able to request
+                  documents until an official approves it. Editing your photo,
+                  birth date, or mobile number won&apos;t.
+                </span>
+              </p>
+            )}
             <Field data-invalid={!!errors.firstName}>
               <FieldLabel htmlFor={ids.firstName}>First name</FieldLabel>
               <Input
                 id={ids.firstName}
                 autoComplete="given-name"
-                autoFocus
                 aria-invalid={!!errors.firstName}
-                disabled={isSubmitting}
-                placeholder="Juan"
+                disabled={busy}
                 {...register("firstName")}
               />
               {errors.firstName && (
@@ -191,8 +239,7 @@ export function SetupForm({ email }: { email: string }) {
               <Input
                 id={ids.middleName}
                 autoComplete="additional-name"
-                disabled={isSubmitting}
-                placeholder="Santos"
+                disabled={busy}
                 {...register("middleName")}
               />
             </Field>
@@ -203,8 +250,7 @@ export function SetupForm({ email }: { email: string }) {
                 id={ids.lastName}
                 autoComplete="family-name"
                 aria-invalid={!!errors.lastName}
-                disabled={isSubmitting}
-                placeholder="Dela Cruz"
+                disabled={busy}
                 {...register("lastName")}
               />
               {errors.lastName && (
@@ -213,7 +259,6 @@ export function SetupForm({ email }: { email: string }) {
             </Field>
           </FieldSet>
 
-          {/* Personal details */}
           <FieldSet>
             <FieldLegend variant="label">Personal details</FieldLegend>
             <Field data-invalid={!!errors.birthDate}>
@@ -228,7 +273,7 @@ export function SetupForm({ email }: { email: string }) {
                         id={ids.birthDate}
                         type="button"
                         variant="outline"
-                        disabled={isSubmitting}
+                        disabled={busy}
                         aria-invalid={!!errors.birthDate}
                         className={cn(
                           "h-9 w-full justify-start rounded-3xl bg-input/50 px-3 font-normal hover:bg-input/50",
@@ -278,8 +323,7 @@ export function SetupForm({ email }: { email: string }) {
                 inputMode="tel"
                 autoComplete="tel"
                 aria-invalid={!!errors.mobileNumber}
-                disabled={isSubmitting}
-                placeholder="0917 123 4567"
+                disabled={busy}
                 {...register("mobileNumber")}
               />
               {errors.mobileNumber ? (
@@ -292,109 +336,55 @@ export function SetupForm({ email }: { email: string }) {
             </Field>
           </FieldSet>
 
-          {/* Government ID */}
-          <FieldSet>
-            <FieldLegend variant="label">Government ID</FieldLegend>
-            <Field data-invalid={!!errors.idType}>
-              <FieldLabel htmlFor={ids.idType}>ID type</FieldLabel>
-              <Controller
-                control={control}
-                name="idType"
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    disabled={isSubmitting}
-                  >
-                    <SelectTrigger
-                      id={ids.idType}
-                      className="w-full"
-                      aria-invalid={!!errors.idType}
-                    >
-                      <SelectValue placeholder="Select an ID" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ID_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.idType && (
-                <FieldError>{errors.idType.message}</FieldError>
-              )}
-            </Field>
-
-            <Field data-invalid={!!errors.idNumber}>
-              <FieldLabel htmlFor={ids.idNumber}>ID number</FieldLabel>
-              <Input
-                id={ids.idNumber}
-                className="font-mono"
-                aria-invalid={!!errors.idNumber}
-                disabled={isSubmitting}
-                placeholder="N01-23-456789"
-                {...register("idNumber")}
-              />
-              {errors.idNumber && (
-                <FieldError>{errors.idNumber.message}</FieldError>
-              )}
-            </Field>
-
-            <Field data-invalid={!!errors.idFront}>
-              <FieldLabel>Front of your ID</FieldLabel>
-              <IdPhotoUpload
-                value={idFront}
-                emptyLabel="Add the front"
-                alt="Front of your ID"
-                disabled={isSubmitting}
-                onUploaded={(url) => {
-                  setValue("idFront", url, { shouldValidate: true });
-                  clearErrors("idFront");
-                }}
-                onError={() =>
-                  toast.error("Upload didn't finish. Please try again.")
-                }
-              />
-              {errors.idFront && (
-                <FieldError>{errors.idFront.message}</FieldError>
-              )}
-            </Field>
-
-            <Field data-invalid={!!errors.idBack}>
-              <FieldLabel>Back of your ID</FieldLabel>
-              <IdPhotoUpload
-                value={idBack}
-                emptyLabel="Add the back"
-                alt="Back of your ID"
-                disabled={isSubmitting}
-                onUploaded={(url) => {
-                  setValue("idBack", url, { shouldValidate: true });
-                  clearErrors("idBack");
-                }}
-                onError={() =>
-                  toast.error("Upload didn't finish. Please try again.")
-                }
-              />
-              {errors.idBack ? (
-                <FieldError>{errors.idBack.message}</FieldError>
-              ) : (
-                <FieldDescription>
-                  Use clear, well-lit photos of both sides. JPG or PNG, up to
-                  10 MB each.
-                </FieldDescription>
-              )}
-            </Field>
-          </FieldSet>
-
-          <Button type="submit" size="lg" disabled={isSubmitting} className="w-full">
-            {isSubmitting && <Spinner />}
-            {isSubmitting ? "Submitting..." : "Submit for verification"}
-          </Button>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              disabled={busy}
+              onClick={() => router.push(backHref)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" size="lg" disabled={busy}>
+              {isSubmitting && <Spinner />}
+              {isSubmitting ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
         </FieldGroup>
       </form>
-    </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-accent text-accent-foreground">
+              <ShieldAlert />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Change your name and re-verify?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Your legal name is tied to your verified ID. Saving a new name
+              sends your account back to the barangay for verification, and you
+              won&apos;t be able to request documents until an official approves
+              it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={confirming}>
+              Keep editing
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void runConfirmed();
+              }}
+              disabled={confirming}
+            >
+              {confirming && <Spinner />}
+              Save and re-verify
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

@@ -18,11 +18,17 @@ export function IdPhotoUpload({
   disabled,
   onUploaded,
   onError,
+  emptyLabel = "Choose ID photo",
+  alt = "Your uploaded ID",
 }: {
   value: string | undefined;
   disabled?: boolean;
   onUploaded: (url: string) => void;
   onError: () => void;
+  /** Call-to-action shown on the empty picker, e.g. "Add the front". */
+  emptyLabel?: string;
+  /** Alt text for the uploaded thumbnail. */
+  alt?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -65,7 +71,7 @@ export function IdPhotoUpload({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={value}
-            alt="Your uploaded ID"
+            alt={alt}
             className="size-16 shrink-0 rounded-xl object-cover ring-1 ring-foreground/10"
           />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -101,7 +107,7 @@ export function IdPhotoUpload({
             {uploading ? <Spinner /> : <Camera className="size-5" aria-hidden />}
           </span>
           <span className="text-sm font-medium text-foreground">
-            {uploading ? "Uploading photo…" : "Choose ID photo"}
+            {uploading ? "Uploading photo…" : emptyLabel}
           </span>
           <span className="text-xs text-muted-foreground">
             Select an image from your device

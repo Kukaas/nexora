@@ -138,6 +138,69 @@ export async function changeInitialPassword(
   return { ok: true };
 }
 
+const accountPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Enter your current password."),
+  newPassword: z
+    .string()
+    .min(8, "New password must be at least 8 characters.")
+    .max(128, "That password is too long."),
+});
+
+/**
+ * Let a resident who signs in with email + password change it from their
+ * profile. Better Auth verifies the current password before setting the new
+ * one. A Google-only account has no password, so the profile page never shows
+ * this option; if it's somehow called for one, changePassword throws and we
+ * surface a plain error.
+ */
+export async function changeAccountPassword(
+  input: z.infer<typeof accountPasswordSchema>,
+): Promise<ChangePasswordResult> {
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
+  if (!session) {
+    return { ok: false, error: "Your session expired. Sign in again." };
+  }
+
+  const parsed = accountPasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Check your details and try again.",
+    };
+  }
+
+  if (parsed.data.currentPassword === parsed.data.newPassword) {
+    return {
+      ok: false,
+      error: "Choose a password different from your current one.",
+    };
+  }
+
+  try {
+    await auth.api.changePassword({
+      body: {
+        currentPassword: parsed.data.currentPassword,
+        newPassword: parsed.data.newPassword,
+        // Keep this device signed in; boot any others for safety.
+        revokeOtherSessions: true,
+      },
+      headers: requestHeaders,
+    });
+  } catch (error) {
+    if (error instanceof APIError) {
+      return {
+        ok: false,
+        error: "That current password didn't match. Please try again.",
+      };
+    }
+    console.error("changeAccountPassword failed", error);
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+
+  return { ok: true };
+}
+
 /**
  * Which sign-in method, if any, already owns this email. "google" when a Google
  * account is linked, "password" for any other existing user, null when the

@@ -31,7 +31,13 @@ export default async function ResidentsPage() {
       ids: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { type: true, number: true, image: true, status: true },
+        select: {
+          type: true,
+          number: true,
+          frontImage: true,
+          backImage: true,
+          status: true,
+        },
       },
     },
   });
@@ -50,7 +56,8 @@ export default async function ResidentsPage() {
         ? {
             type: submittedId.type,
             number: submittedId.number,
-            image: submittedId.image,
+            frontImage: submittedId.frontImage,
+            backImage: submittedId.backImage,
           }
         : null,
     };

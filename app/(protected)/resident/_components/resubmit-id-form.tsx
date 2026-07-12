@@ -44,7 +44,8 @@ const ID_TYPES = [
 const schema = z.object({
   idType: z.string().min(1, "Choose your ID type."),
   idNumber: z.string().trim().min(1, "Enter your ID number."),
-  idImage: z.string().url("Upload a photo of your ID."),
+  idFront: z.string().url("Upload the front of your ID."),
+  idBack: z.string().url("Upload the back of your ID."),
 });
 
 type Values = z.infer<typeof schema>;
@@ -65,17 +66,19 @@ export function ResubmitIdForm() {
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: { idType: "", idNumber: "", idImage: "" },
+    defaultValues: { idType: "", idNumber: "", idFront: "", idBack: "" },
   });
 
-  const idImage = watch("idImage");
+  const idFront = watch("idFront");
+  const idBack = watch("idBack");
 
   const onSubmit = async (values: Values) => {
     setFormError(null);
     const result = await resubmitResidentId({
       idType: values.idType as ResubmitIdInput["idType"],
       idNumber: values.idNumber,
-      idImage: values.idImage,
+      idFront: values.idFront,
+      idBack: values.idBack,
     });
     if (!result.ok) {
       setFormError(result.error);
@@ -147,24 +150,47 @@ export function ResubmitIdForm() {
               )}
             </Field>
 
-            <Field data-invalid={!!errors.idImage}>
-              <FieldLabel>Photo of your ID</FieldLabel>
+            <Field data-invalid={!!errors.idFront}>
+              <FieldLabel>Front of your ID</FieldLabel>
               <IdPhotoUpload
-                value={idImage}
+                value={idFront}
+                emptyLabel="Add the front"
+                alt="Front of your ID"
                 disabled={isSubmitting}
                 onUploaded={(url) => {
-                  setValue("idImage", url, { shouldValidate: true });
-                  clearErrors("idImage");
+                  setValue("idFront", url, { shouldValidate: true });
+                  clearErrors("idFront");
                 }}
                 onError={() =>
                   toast.error("Upload didn't finish. Please try again.")
                 }
               />
-              {errors.idImage ? (
-                <FieldError>{errors.idImage.message}</FieldError>
+              {errors.idFront && (
+                <FieldError>{errors.idFront.message}</FieldError>
+              )}
+            </Field>
+
+            <Field data-invalid={!!errors.idBack}>
+              <FieldLabel>Back of your ID</FieldLabel>
+              <IdPhotoUpload
+                value={idBack}
+                emptyLabel="Add the back"
+                alt="Back of your ID"
+                disabled={isSubmitting}
+                onUploaded={(url) => {
+                  setValue("idBack", url, { shouldValidate: true });
+                  clearErrors("idBack");
+                }}
+                onError={() =>
+                  toast.error("Upload didn't finish. Please try again.")
+                }
+              />
+              {errors.idBack ? (
+                <FieldError>{errors.idBack.message}</FieldError>
               ) : (
                 <FieldDescription>
-                  Use a clear, well-lit photo. JPG or PNG, up to 10 MB.
+                  Use clear, well-lit photos of both sides. JPG or PNG, up to
+                  10 MB each.
                 </FieldDescription>
               )}
             </Field>

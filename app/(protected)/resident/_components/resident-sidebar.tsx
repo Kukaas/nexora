@@ -154,13 +154,16 @@ export function ResidentSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton aria-disabled tooltip="My profile">
-                  <UserRound />
-                  <span>My profile</span>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(`${home}/profile`)}
+                  tooltip="My profile"
+                >
+                  <Link href={`${home}/profile`} onClick={closeOnMobile}>
+                    <UserRound />
+                    <span>My profile</span>
+                  </Link>
                 </SidebarMenuButton>
-                <SidebarMenuBadge className="text-muted-foreground">
-                  Soon
-                </SidebarMenuBadge>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
