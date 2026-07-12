@@ -253,7 +253,12 @@ model Announcement {
   pinned                           Boolean           @default(false)
   published                        Boolean           @default(true)
   place                            String?
+  latitude                         Float?            @map("latitude")
+  longitude                        Float?            @map("longitude")
   date                             DateTime?         @map("date")
+  startTime                        String?           @map("start_time")
+  endTime                          String?           @map("end_time")
+  imageUrl                         String?           @map("image_url")
 
   authorId                         String?           @map("author_id")
   author                           User?             @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)

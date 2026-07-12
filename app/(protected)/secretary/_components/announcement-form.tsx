@@ -40,11 +40,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AnnouncementCategory } from "@/app/generated/prisma/enums";
 import {
+  BARANGAY,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
+  LIBTANGIN_VENUES,
   type AnnouncementDTO,
+  type LibtanginVenue,
 } from "@/lib/documents";
 import { deleteAnnouncement, saveAnnouncement } from "@/lib/secretary-actions";
+import {
+  LibtanginMapPicker,
+  type MapPoint,
+} from "@/components/libtangin-map";
+import { AnnouncementImageUpload } from "./announcement-image-upload";
 
 /** Parse an ISO date string to a Date, or undefined if absent/invalid. */
 function isoToDate(iso: string | null): Date | undefined {
@@ -70,6 +78,8 @@ export function AnnouncementForm({
   const bodyId = useId();
   const placeId = useId();
   const dateId = useId();
+  const startTimeId = useId();
+  const endTimeId = useId();
   const pinnedId = useId();
   const publishedId = useId();
 
@@ -79,8 +89,18 @@ export function AnnouncementForm({
     editing?.category ?? AnnouncementCategory.ADVISORY,
   );
   const [place, setPlace] = useState(editing?.place ?? "");
+  const [point, setPoint] = useState<MapPoint | null>(() =>
+    editing?.latitude != null && editing?.longitude != null
+      ? { lat: editing.latitude, lng: editing.longitude }
+      : null,
+  );
   const [date, setDate] = useState<Date | undefined>(() =>
     isoToDate(editing?.date ?? null),
+  );
+  const [startTime, setStartTime] = useState(editing?.startTime ?? "");
+  const [endTime, setEndTime] = useState(editing?.endTime ?? "");
+  const [imageUrl, setImageUrl] = useState<string | undefined>(
+    editing?.imageUrl ?? undefined,
   );
   const [pinned, setPinned] = useState(editing?.pinned ?? false);
   const [published, setPublished] = useState(editing?.published ?? true);
@@ -89,6 +109,12 @@ export function AnnouncementForm({
   const [deleting, setDeleting] = useState(false);
 
   const busy = saving || deleting;
+
+  /** Pick a listed landmark: fill the name and drop the pin on its spot. */
+  const pickVenue = (venue: LibtanginVenue) => {
+    setPlace(venue.name);
+    setPoint({ lat: venue.lat, lng: venue.lng });
+  };
 
   const save = async () => {
     if (!title.trim()) {
@@ -99,6 +125,14 @@ export function AnnouncementForm({
       toast.error("Add the notice details.");
       return;
     }
+    if (endTime && !startTime) {
+      toast.error("Set a start time before an end time.");
+      return;
+    }
+    if (startTime && endTime && endTime <= startTime) {
+      toast.error("The end time should be after the start time.");
+      return;
+    }
     setSaving(true);
     const result = await saveAnnouncement({
       id: editing?.id,
@@ -106,7 +140,12 @@ export function AnnouncementForm({
       body: body.trim(),
       category,
       place: place.trim() || undefined,
+      latitude: point?.lat,
+      longitude: point?.lng,
       date: date ? format(date, "yyyy-MM-dd") : undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined,
+      imageUrl,
       pinned,
       published,
     });
@@ -182,9 +221,35 @@ export function AnnouncementForm({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="What residents need to know: who's affected, when, and what to do."
-              rows={10}
+              rows={9}
               disabled={busy}
             />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>
+              Location on the map{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </Label>
+            <LibtanginMapPicker
+              value={point}
+              onChange={setPoint}
+              venues={LIBTANGIN_VENUES}
+              onPickVenue={pickVenue}
+              onRejectOutside={() =>
+                toast.warning("That spot is outside Barangay Libtangin.", {
+                  description: "Pick a place within the highlighted area.",
+                })
+              }
+              disabled={busy}
+            />
+            <p className="text-xs text-muted-foreground">
+              {point
+                ? "Residents see this exact spot. Drag the pin to fine-tune, or tap a labeled place."
+                : "Tap a labeled place, or anywhere on the map, to drop the pin. The map stays within Libtangin."}
+            </p>
           </div>
         </div>
 
@@ -272,13 +337,111 @@ export function AnnouncementForm({
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor={placeId}>Place</Label>
+            <Label htmlFor={startTimeId}>
+              Time{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </Label>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <span
+                  id={`${startTimeId}-label`}
+                  className="text-xs text-muted-foreground"
+                >
+                  From
+                </span>
+                <Input
+                  id={startTimeId}
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  disabled={busy}
+                  aria-labelledby={`${startTimeId}-label`}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span
+                  id={`${endTimeId}-label`}
+                  className="text-xs text-muted-foreground"
+                >
+                  To
+                </span>
+                <Input
+                  id={endTimeId}
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  disabled={busy || !startTime}
+                  aria-labelledby={`${endTimeId}-label`}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              When the event starts and, if it helps, when it ends.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor={placeId}>
+              Location{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </Label>
             <Input
               id={placeId}
               value={place}
               onChange={(e) => setPlace(e.target.value)}
-              placeholder="Barangay covered court"
+              placeholder="Barangay Covered Court"
               disabled={busy}
+            />
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Common venues">
+              {LIBTANGIN_VENUES.map((venue) => {
+                const active = place.trim() === venue.name;
+                return (
+                  <button
+                    key={venue.name}
+                    type="button"
+                    disabled={busy}
+                    aria-pressed={active}
+                    onClick={() => {
+                      if (active) {
+                        setPlace("");
+                        setPoint(null);
+                      } else {
+                        pickVenue(venue);
+                      }
+                    }}
+                    className={cn(
+                      "inline-flex h-7 items-center rounded-full border px-2.5 text-xs font-medium transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50",
+                      active
+                        ? "border-transparent bg-primary text-primary-foreground"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    {venue.name}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              A venue within {BARANGAY.name}, {BARANGAY.area}. Picking one drops
+              the pin on the map. Leave empty for barangay-wide notices.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label>
+              Event image{" "}
+              <span className="font-normal text-muted-foreground">
+                (optional)
+              </span>
+            </Label>
+            <AnnouncementImageUpload
+              value={imageUrl}
+              disabled={busy}
+              onChange={setImageUrl}
             />
           </div>
 

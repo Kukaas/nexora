@@ -11,7 +11,7 @@ import {
   DocumentRequestStatus,
   UserRoles,
 } from "@/app/generated/prisma/enums";
-import { DOCUMENT_FIELD_TYPES } from "@/lib/documents";
+import { DOCUMENT_FIELD_TYPES, isWithinLibtangin } from "@/lib/documents";
 import { deleteCloudinaryImage, uploadImage } from "@/lib/cloudinary";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -336,15 +336,84 @@ const announcementSchema = z.object({
     Object.values(AnnouncementCategory) as [string, ...string[]],
   ),
   place: z.string().trim().max(160).optional(),
+  // The picked map point. Both must be present together and fall inside the
+  // Libtangin box; a point outside it is rejected rather than silently clamped.
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
   // The event/advisory date as "yyyy-MM-dd"; optional for ongoing notices.
   date: z
     .string()
     .trim()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a valid date.")
     .optional(),
+  // Event start/end times as 24-hour "HH:MM" (what <input type="time"> emits).
+  startTime: z
+    .string()
+    .trim()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Pick a valid start time.")
+    .optional(),
+  endTime: z
+    .string()
+    .trim()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Pick a valid end time.")
+    .optional(),
+  // Cloudinary URL of an already-uploaded event image; optional.
+  imageUrl: z.string().url().optional(),
   pinned: z.boolean(),
   published: z.boolean(),
+}).superRefine((val, ctx) => {
+  const hasLat = val.latitude !== undefined;
+  const hasLng = val.longitude !== undefined;
+  if (hasLat !== hasLng) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Pick a point on the map, or leave it empty.",
+      path: ["latitude"],
+    });
+    return;
+  }
+  if (hasLat && hasLng && !isWithinLibtangin(val.longitude!, val.latitude!)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Choose a spot inside Barangay Libtangin.",
+      path: ["latitude"],
+    });
+  }
 });
+
+const MAX_ANNOUNCEMENT_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Upload an event image for an announcement and return its Cloudinary URL, the
+ * same FormData → Server Action → Cloudinary flow the QR and proof uploads use.
+ * The form holds the returned URL and persists it on save; a replaced image's
+ * old asset is cleaned up in `saveAnnouncement`.
+ */
+export async function uploadAnnouncementImage(formData: FormData): Promise<
+  { ok: true; url: string } | { ok: false; error: string }
+> {
+  const auth = await requireSecretary();
+  if (!auth.ok) return auth;
+
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Choose an image to upload." };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { ok: false, error: "That file isn't an image." };
+  }
+  if (file.size > MAX_ANNOUNCEMENT_IMAGE_BYTES) {
+    return { ok: false, error: "That image is too large. Keep it under 8 MB." };
+  }
+
+  try {
+    const url = await uploadImage(file, "nexora/announcement");
+    return { ok: true, url };
+  } catch (error) {
+    console.error("uploadAnnouncementImage failed", error);
+    return { ok: false, error: "The image couldn't be uploaded. Try again." };
+  }
+}
 
 /** Create or update an announcement. */
 export async function saveAnnouncement(
@@ -360,24 +429,53 @@ export async function saveAnnouncement(
       error: parsed.error.issues[0]?.message ?? "Please check the details and try again.",
     };
   }
-  const { id, title, body, category, place, date, pinned, published } =
-    parsed.data;
+  const {
+    id,
+    title,
+    body,
+    category,
+    place,
+    latitude,
+    longitude,
+    date,
+    startTime,
+    endTime,
+    imageUrl,
+    pinned,
+    published,
+  } = parsed.data;
 
   const data = {
     title,
     body,
     category: category as AnnouncementCategory,
     place: place || null,
+    latitude: latitude ?? null,
+    longitude: longitude ?? null,
     // Store at UTC midnight; the barangay runs on a single time zone (UTC+8), so
     // the calendar day never shifts when it's read back.
     date: date ? new Date(`${date}T00:00:00Z`) : null,
+    startTime: startTime || null,
+    // An end time only means something alongside a start; drop a stray end.
+    endTime: startTime ? endTime || null : null,
+    imageUrl: imageUrl || null,
     pinned,
     published,
     authorId: auth.userId,
   };
 
   if (id) {
+    // If the editor swapped or removed the image, reap the old Cloudinary asset
+    // after the row is safely updated so we never leave the record pointing at a
+    // deleted file (best-effort; a failed cleanup just leaves an orphan).
+    const existing = await prisma.announcement.findUnique({
+      where: { id },
+      select: { imageUrl: true },
+    });
     await prisma.announcement.update({ where: { id }, data });
+    if (existing?.imageUrl && existing.imageUrl !== data.imageUrl) {
+      await deleteCloudinaryImage(existing.imageUrl);
+    }
   } else {
     await prisma.announcement.create({ data });
   }
@@ -394,7 +492,9 @@ export async function deleteAnnouncement(input: {
   const auth = await requireSecretary();
   if (!auth.ok) return auth;
 
-  await prisma.announcement.delete({ where: { id: input.id } });
+  const deleted = await prisma.announcement.delete({ where: { id: input.id } });
+  // Reap the event image too, so deleting a notice doesn't orphan its asset.
+  if (deleted.imageUrl) await deleteCloudinaryImage(deleted.imageUrl);
   revalidateSecretary(auth.userId);
   revalidatePath("/resident");
   return { ok: true };

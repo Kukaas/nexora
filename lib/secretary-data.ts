@@ -262,7 +262,12 @@ export function toAnnouncementDTO(row: {
   pinned: boolean;
   published: boolean;
   place: string | null;
+  latitude: number | null;
+  longitude: number | null;
   date: Date | null;
+  startTime: string | null;
+  endTime: string | null;
+  imageUrl: string | null;
   createdAt: Date;
   author: { name: string | null; firstName: string | null; lastName: string | null } | null;
 }): AnnouncementDTO {
@@ -274,7 +279,12 @@ export function toAnnouncementDTO(row: {
     pinned: row.pinned,
     published: row.published,
     place: row.place,
+    latitude: row.latitude,
+    longitude: row.longitude,
     date: row.date?.toISOString() ?? null,
+    startTime: row.startTime,
+    endTime: row.endTime,
+    imageUrl: row.imageUrl,
     authorName: personName(row.author),
     createdAt: row.createdAt.toISOString(),
   };

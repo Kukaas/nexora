@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, Megaphone, Pencil, Pin, Plus } from "lucide-react";
+import {
+  CalendarDays,
+  ImageIcon,
+  Megaphone,
+  Pencil,
+  Pin,
+  Plus,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -97,18 +104,23 @@ export function AnnouncementsManager({
                 {pg.visible.map((a) => (
                   <TableRow key={a.id}>
                     <TableCell className="ps-5">
-                      <div className="flex items-center gap-1.5">
-                        {a.pinned && (
-                          <Pin
-                            className="size-3.5 shrink-0 text-accent-foreground"
-                            aria-label="Pinned"
-                          />
-                        )}
-                        <span className="font-medium">{a.title}</span>
+                      <div className="flex items-center gap-3">
+                        <Thumbnail src={a.imageUrl} />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            {a.pinned && (
+                              <Pin
+                                className="size-3.5 shrink-0 text-accent-foreground"
+                                aria-label="Pinned"
+                              />
+                            )}
+                            <span className="font-medium">{a.title}</span>
+                          </div>
+                          <p className="mt-0.5 line-clamp-1 max-w-md text-sm text-muted-foreground">
+                            {a.place ? `${a.place} · ${a.body}` : a.body}
+                          </p>
+                        </div>
                       </div>
-                      <p className="mt-0.5 line-clamp-1 max-w-md text-sm text-muted-foreground">
-                        {a.body}
-                      </p>
                     </TableCell>
                     <TableCell>
                       <span className="inline-flex h-6 items-center rounded-3xl border border-border px-2.5 text-xs font-medium text-muted-foreground">
@@ -153,7 +165,8 @@ export function AnnouncementsManager({
           {/* Stacked rows — phones */}
           <ul className="divide-y divide-border overflow-hidden rounded-4xl border border-border bg-card md:hidden">
             {pg.visible.map((a) => (
-              <li key={a.id} className="flex items-start gap-4 px-4 py-4 sm:px-5">
+              <li key={a.id} className="flex items-start gap-3 px-4 py-4 sm:px-5">
+                <Thumbnail src={a.imageUrl} />
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <span className="inline-flex h-6 items-center rounded-3xl border border-border px-2.5 text-xs font-medium text-muted-foreground">
@@ -215,5 +228,33 @@ export function AnnouncementsManager({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * A small square preview of an announcement's event image in the list, with a
+ * neutral image-glyph placeholder when the notice has no picture. Fixed size so
+ * every row lines up whether or not it carries an image.
+ */
+function Thumbnail({ src }: { src: string | null }) {
+  if (!src) {
+    return (
+      <span
+        aria-hidden
+        className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"
+      >
+        <ImageIcon className="size-4" />
+      </span>
+    );
+  }
+  return (
+    // Cloudinary delivery URL; plain img avoids remotePatterns config.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      loading="lazy"
+      className="size-10 shrink-0 rounded-xl object-cover ring-1 ring-foreground/10"
+    />
   );
 }
