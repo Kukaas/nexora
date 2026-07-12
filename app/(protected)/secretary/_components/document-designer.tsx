@@ -34,6 +34,7 @@ import {
   Baseline,
   Bold,
   Braces,
+  CaseUpper,
   ChevronDown,
   Heading1,
   Heading2,
@@ -94,6 +95,7 @@ import {
 } from "@/lib/documents";
 import { MergeField } from "@/lib/tiptap/merge-field";
 import { LetterSpacing } from "@/lib/tiptap/letter-spacing";
+import { TextTransformMark } from "@/lib/tiptap/text-transform";
 import { DocumentKeymap } from "@/lib/tiptap/document-keymap";
 import { FloatingImage } from "@/lib/tiptap/floating-image";
 import { FloatingText } from "@/lib/tiptap/floating-text";
@@ -242,6 +244,7 @@ export function DocumentDesigner({
       FontSize,
       LineHeight,
       LetterSpacing,
+      TextTransformMark,
       Color,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TableKit.configure({ table: { resizable: true } }),
@@ -460,6 +463,7 @@ function Toolbar({
         italic: currentEditor.isActive("italic"),
         underline: currentEditor.isActive("underline"),
         strike: currentEditor.isActive("strike"),
+        uppercase: textStyle.textTransform === "uppercase",
         textAlign: textAlign ?? "left",
         bulletList: currentEditor.isActive("bulletList"),
         orderedList: currentEditor.isActive("orderedList"),
@@ -655,6 +659,13 @@ function Toolbar({
           onClick={() => editor.chain().focus().toggleStrike().run()}
         >
           <Strikethrough />
+        </ToolButton>
+        <ToolButton
+          label="UPPERCASE"
+          active={toolbarState.uppercase}
+          onClick={() => editor.chain().focus().toggleUppercase().run()}
+        >
+          <CaseUpper />
         </ToolButton>
 
         {/* Text color */}
