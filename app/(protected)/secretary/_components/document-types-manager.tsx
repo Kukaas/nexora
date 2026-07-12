@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Pencil, Plus } from "lucide-react";
+import { FileText, LayoutTemplate, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -136,7 +136,9 @@ export function DocumentTypesManager({
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
                     Available
                   </TableHead>
-                  <TableHead className="h-11 w-10 pe-5" aria-label="Edit" />
+                  <TableHead className="h-11 w-20 pe-5 text-right text-xs font-medium tracking-wide text-muted-foreground">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -186,16 +188,32 @@ export function DocumentTypesManager({
                       />
                     </TableCell>
                     <TableCell className="pe-5 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        asChild
-                        aria-label={`Edit ${type.name}`}
-                      >
-                        <Link href={`${basePath}/${type.id}/edit`}>
-                          <Pencil />
-                        </Link>
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          asChild
+                          aria-label={`Design layout for ${type.name}`}
+                        >
+                          <Link href={`${basePath}/${type.id}/design`}>
+                            <LayoutTemplate
+                              className={cn(
+                                !type.template && "text-muted-foreground/60",
+                              )}
+                            />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          asChild
+                          aria-label={`Edit ${type.name}`}
+                        >
+                          <Link href={`${basePath}/${type.id}/edit`}>
+                            <Pencil />
+                          </Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -256,6 +274,20 @@ export function DocumentTypesManager({
                     onCheckedChange={(v) => toggleActive(type, v)}
                     aria-label={`${type.active ? "Turn off" : "Turn on"} ${type.name}`}
                   />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    asChild
+                    aria-label={`Design layout for ${type.name}`}
+                  >
+                    <Link href={`${basePath}/${type.id}/design`}>
+                      <LayoutTemplate
+                        className={cn(
+                          !type.template && "text-muted-foreground/60",
+                        )}
+                      />
+                    </Link>
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

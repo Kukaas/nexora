@@ -151,3 +151,412 @@
     animation: nx-float 7s ease-in-out infinite;
   }
 }
+
+/* ── Document layout (designer surface + printed sheet) ─────────────────────
+   `.nx-doc` is the white A4-style sheet shared by the Tiptap designer and the
+   merge-print view, so what the secretary designs is what prints. Deliberately
+   light/serif and independent of the app theme — a document is a document. */
+.nx-doc {
+  position: relative; /* anchor for freely-placed (absolute) images */
+  width: min(794px, 100%);
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #111111;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12pt;
+  line-height: 1.5;
+  padding: 48px 56px;
+  border-radius: 8px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 10px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Fill the sheet down to a full page so the surface reads as real paper. The
+   sheet sets `--nx-page-h` to the chosen paper height (padding is 48px × 2).
+   `position: relative` is the crucial bit: ProseMirror sets it on the editable,
+   which makes *that inset content box* (page minus the 48/56 padding) the
+   containing block for every floating element's percentage x/y/width. The print
+   view mirrors this by rendering the merged HTML inside its own
+   `.nx-doc-editor`, so a box's percentages mean the exact same rectangle in both
+   surfaces — otherwise the print view resolved them against the full sheet and
+   every element drifted right and grew wider (bodies overflowed off the page). */
+.nx-doc .nx-doc-editor {
+  position: relative;
+  min-height: calc(var(--nx-page-h, 900px) - 96px);
+  /* ProseMirror disables ligatures on the editable; match it in the print view
+     so text measures — and therefore wraps — byte-for-byte the same. */
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+}
+/* The print/preview sheet needs a *definite* height (not just min-height) so a
+   floating element's `top: Y%` resolves against the full page — otherwise every
+   absolutely-placed image/text box collapses to the top. In the editor this
+   definiteness comes from `.nx-doc-editor`'s min-height; the print sheet has no
+   such child, so it sets the page height itself. */
+.nx-doc-print {
+  height: var(--nx-page-h, auto);
+}
+.nx-doc .ProseMirror:focus {
+  outline: none;
+}
+
+.nx-doc h1 {
+  font-size: 1.6em;
+  font-weight: 700;
+  margin: 0 0 0.4em;
+}
+.nx-doc h2 {
+  font-size: 1.35em;
+  font-weight: 700;
+  margin: 0 0 0.35em;
+}
+.nx-doc h3 {
+  font-size: 1.15em;
+  font-weight: 700;
+  margin: 0 0 0.3em;
+}
+.nx-doc p {
+  margin: 0 0 0.6em;
+}
+.nx-doc ul {
+  list-style: disc;
+  padding-left: 1.5em;
+  margin: 0 0 0.6em;
+}
+.nx-doc ol {
+  list-style: decimal;
+  padding-left: 1.5em;
+  margin: 0 0 0.6em;
+}
+.nx-doc a {
+  color: #0645ad;
+  text-decoration: underline;
+}
+
+/* Tables read like a document: hard borders, padded cells, shaded header. */
+.nx-doc .tableWrapper {
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+.nx-doc table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.nx-doc td,
+.nx-doc th {
+  border: 1px solid #999999;
+  padding: 6px 8px;
+  vertical-align: top;
+  position: relative;
+}
+.nx-doc th {
+  background: #f2f2f2;
+  font-weight: 600;
+  text-align: start;
+}
+.nx-doc .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--primary);
+  pointer-events: none;
+}
+.nx-doc .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.06);
+  pointer-events: none;
+}
+
+/* Freely-placed images float over the page (position/size in %); in stored /
+   printed HTML they're a bare `<img data-floating style="position:absolute…">`.
+   The editor wraps each in `.nx-float-image` (also absolute, set inline). */
+.nx-doc img {
+  max-width: 100%;
+  height: auto;
+}
+.nx-doc img[data-floating] {
+  height: auto;
+}
+.nx-float-image img {
+  user-select: none;
+}
+/* Freely-placed text boxes use the same percentage positioning as floating
+   images. Editor-only controls are React node-view chrome, so they are not
+   included in the saved HTML or print output. */
+.nx-float-text {
+  z-index: 3;
+  min-height: 1.8em;
+  /* The hover affordance is drawn with `outline`, not `border`, so it never
+     insets the content box. The printed `[data-floating-text]` has no border or
+     padding, so any layout-affecting inset here would wrap the box's text
+     differently than it prints — the designer must be pixel-for-pixel WYSIWYG. */
+  outline: 1px dashed transparent;
+  outline-offset: -1px;
+  transition: outline-color 0.1s ease;
+}
+/* Reveal the box outline ONLY while hovered or being dragged — never merely
+   because it holds the text cursor. So a clicked or edited box (mouse elsewhere)
+   reads as clean paper, and no fill/highlight is ever painted over the content. */
+.nx-float-text:hover,
+.nx-float-text[data-busy] {
+  outline-color: color-mix(in oklab, var(--primary) 55%, transparent);
+}
+/* Editing chrome (move/delete toolbar + resize handles) hides until the box is
+   hovered or actively dragged, so clicking away shows a clean preview. */
+.nx-float-text > .nx-float-toolbar,
+.nx-float-text > .nx-rz {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+}
+.nx-float-text:hover > .nx-float-toolbar,
+.nx-float-text[data-busy] > .nx-float-toolbar,
+.nx-float-text:hover > .nx-rz,
+.nx-float-text[data-busy] > .nx-rz {
+  opacity: 1;
+  pointer-events: auto;
+}
+.nx-float-text-content {
+  min-height: 1.8em;
+}
+.nx-float-text-content > :last-child {
+  margin-bottom: 0;
+}
+.nx-float-toolbar {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--primary) 55%, transparent);
+  border-radius: 5px 5px 0 0;
+  background: #ffffff;
+  color: #444444;
+}
+.nx-float-grip,
+.nx-float-del {
+  display: inline-flex;
+  width: 26px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+}
+.nx-float-grip {
+  cursor: grab;
+}
+.nx-float-del {
+  cursor: pointer;
+  color: #b42318;
+}
+.nx-float-grip:hover,
+.nx-float-del:hover {
+  background: #f2f2f2;
+}
+
+/* Stored/printed floating text has no node-view wrapper, just this attribute.
+   Mirror the editor's `.nx-float-text` / `.nx-float-text-content` box exactly
+   (min-height + collapsed trailing margin) so a box is the same size in print. */
+.nx-doc [data-floating-text] {
+  box-sizing: border-box;
+  min-height: 1.8em;
+}
+.nx-doc [data-floating-text] > :last-child {
+  margin-bottom: 0;
+}
+
+/* Freely-placed shapes (rect / ellipse / line). Stored/printed as a bare
+   `<div data-shape>`; the editor wraps each in `.nx-float-shape`. */
+.nx-float-shape[data-selected] {
+  outline: 1px dashed color-mix(in oklab, var(--primary) 55%, transparent);
+  outline-offset: 2px;
+}
+.nx-shape-swatch {
+  position: relative;
+  display: inline-flex;
+  width: 26px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.nx-shape-swatch > span {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+.nx-shape-swatch > input {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+/* Smart alignment guides drawn while dragging a floating element (see
+   lib/tiptap/alignment-guides.ts). The overlay lives inside the sheet but
+   outside ProseMirror's editable, so it never reaches the saved HTML. */
+.nx-guides {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+.nx-guide-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1px solid var(--primary);
+}
+.nx-guide-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1px solid var(--primary);
+}
+
+/* Shared 8-direction resize handles for every floating element. */
+.nx-rz {
+  position: absolute;
+  z-index: 10;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--primary);
+  border-radius: 3px;
+  background: var(--background);
+}
+.nx-rz-n {
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+.nx-rz-s {
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+.nx-rz-e {
+  top: 50%;
+  right: -6px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+.nx-rz-w {
+  top: 50%;
+  left: -6px;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+.nx-rz-ne {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+.nx-rz-nw {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+.nx-rz-se {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+.nx-rz-sw {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+/* Word-like Tab: a real tab character that lands on a tab stop instead of
+   collapsing. `pre-wrap` preserves the tab (and runs of spaces) while still
+   wrapping normally. Scoped to text blocks so tables/layout are untouched. */
+.nx-doc p,
+.nx-doc h1,
+.nx-doc h2,
+.nx-doc h3,
+.nx-doc li {
+  white-space: pre-wrap;
+  tab-size: 4;
+}
+
+/* Merge-field chip — only visible while designing; the print view swaps each
+   placeholder for real text, so no chip ever reaches paper. Kept WIDTH-HONEST:
+   it inherits the surrounding body text's font, size and weight and carries only
+   a hair of padding (no braces, no font swap, no size bump), so a placeholder
+   occupies almost exactly the space its plain label would. That keeps the
+   designer's line-wrapping faithful to what actually prints — an inflated chip
+   (bigger font + brace markers) pushed later words onto new lines that the real
+   value never would. The warm highlight + inset ring is what marks it as a
+   field; box-shadow paints the ring without adding any layout width. */
+.nx-merge {
+  border-radius: 3px;
+  padding: 0 0.1em;
+  background: color-mix(in oklab, var(--primary) 26%, #ffffff);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--primary) 55%, #7a5600);
+  color: #6b4a00;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  white-space: nowrap;
+}
+/* A selected chip in the editor gets a clear focus ring. */
+.nx-doc .nx-merge.ProseMirror-selectednode {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+/* ── Print: only the document sheet reaches paper ──────────────────────────── */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  [data-print-hide] {
+    display: none !important;
+  }
+  /* Hide all app chrome, then reveal just the sheet and its contents. */
+  body * {
+    visibility: hidden;
+  }
+  .nx-doc,
+  .nx-doc * {
+    visibility: visible;
+  }
+  /* Lift the sheet out of the app shell for paper. It's nested inside the
+     sidebar layout, whose main column (`SidebarInset`) is `position: relative`
+     and offset by the sidebar — so an *absolutely*-positioned sheet would size
+     and place against that narrowed, shifted column, printing too wide and
+     clipping its right edge. `fixed` pins the sheet to the page box itself,
+     sized to the exact paper (via the inline --nx-page-w/h vars), so it fills
+     exactly one sheet and can't bleed onto a second. The preview's inline
+     transform+width are overridden with !important. */
+  .nx-doc-print {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: none !important;
+    width: var(--nx-page-w, 100%) !important;
+    /* Definite height so floating `top: Y%` resolves; clip to a single page. */
+    height: var(--nx-page-h, auto) !important;
+    overflow: hidden;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  /* The preview reserves the scaled sheet's footprint to size its scroll area;
+     with the sheet now `fixed` (out of flow) that reserved height would push a
+     blank second page, so collapse it for paper. */
+  .nx-doc-fit {
+    height: 0 !important;
+  }
+}

@@ -9,6 +9,7 @@ import {
   type AnnouncementDTO,
   type DocumentRequestDTO,
   type DocumentTypeDTO,
+  type MediaAssetDTO,
   type RequestPage,
   type RequestQuery,
   type RequestStatusCounts,
@@ -172,13 +173,13 @@ export async function getRequestSummary(): Promise<RequestSummary> {
   };
 }
 
-export async function getDocumentTypes(): Promise<DocumentTypeDTO[]> {
-  const rows = await prisma.documentType.findMany({
-    orderBy: [{ active: "desc" }, { name: "asc" }],
-    include: { _count: { select: { requests: true } } },
-  });
-
-  return rows.map((row) => ({
+/** Shared row → DTO mapper, so the list and single-type reads stay in sync. */
+function toDocumentTypeDTO(
+  row: Prisma.DocumentTypeGetPayload<{
+    include: { _count: { select: { requests: true } } };
+  }>,
+): DocumentTypeDTO {
+  return {
     id: row.id,
     name: row.name,
     description: row.description,
@@ -186,8 +187,33 @@ export async function getDocumentTypes(): Promise<DocumentTypeDTO[]> {
     turnaroundDays: row.turnaroundDays,
     active: row.active,
     fields: parseDocumentFields(row.fields),
+    template: row.template ?? null,
+    paperSize: row.paperSize,
+    orientation: row.orientation,
     requestCount: row._count.requests,
     updatedAt: row.updatedAt?.toISOString() ?? null,
+  };
+}
+
+export async function getDocumentTypes(): Promise<DocumentTypeDTO[]> {
+  const rows = await prisma.documentType.findMany({
+    orderBy: [{ active: "desc" }, { name: "asc" }],
+    include: { _count: { select: { requests: true } } },
+  });
+
+  return rows.map(toDocumentTypeDTO);
+}
+
+/** The reusable image library for the document designer, newest first. */
+export async function getMediaAssets(): Promise<MediaAssetDTO[]> {
+  const rows = await prisma.mediaAsset.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    url: row.url,
+    name: row.name,
+    createdAt: row.createdAt.toISOString(),
   }));
 }
 
@@ -201,17 +227,7 @@ export async function getDocumentTypeById(
   });
   if (!row) return null;
 
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    fee: Number(row.fee),
-    turnaroundDays: row.turnaroundDays,
-    active: row.active,
-    fields: parseDocumentFields(row.fields),
-    requestCount: row._count.requests,
-    updatedAt: row.updatedAt?.toISOString() ?? null,
-  };
+  return toDocumentTypeDTO(row);
 }
 
 /** A single announcement for the secretary editor, or null if missing. */

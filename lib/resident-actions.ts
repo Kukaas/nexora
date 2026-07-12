@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { deleteCloudinaryImage } from "@/lib/cloudinary";
+import { deleteCloudinaryImage, uploadImage } from "@/lib/cloudinary";
 import { IDType } from "@/app/generated/prisma/enums";
 
 const ID_TYPE_VALUES = Object.values(IDType) as [IDType, ...IDType[]];
@@ -25,6 +25,35 @@ const setupSchema = z.object({
 export type SetupInput = z.input<typeof setupSchema>;
 
 export type SetupResult = { ok: true } | { ok: false; error: string };
+
+const MAX_ID_IMAGE_BYTES = 10 * 1024 * 1024;
+
+/** Upload a resident-selected ID image through the authenticated server. */
+export async function uploadResidentIdImage(formData: FormData): Promise<
+  { ok: true; url: string } | { ok: false; error: string }
+> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { ok: false, error: "Your session expired. Sign in again." };
+
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: "Choose an ID photo to upload." };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { ok: false, error: "That file isn't an image." };
+  }
+  if (file.size > MAX_ID_IMAGE_BYTES) {
+    return { ok: false, error: "Keep the ID photo under 10 MB." };
+  }
+
+  try {
+    const url = await uploadImage(file, "nexora/government_id");
+    return { ok: true, url };
+  } catch (error) {
+    console.error("uploadResidentIdImage failed", error);
+    return { ok: false, error: "The ID photo couldn't be uploaded. Try again." };
+  }
+}
 
 /**
  * Normalize a Philippine mobile number to `+63XXXXXXXXXX`. Accepts the common

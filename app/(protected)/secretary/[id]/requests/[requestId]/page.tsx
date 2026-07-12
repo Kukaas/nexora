@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertCircle, ArrowLeft, BanknoteIcon, ExternalLink } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  BanknoteIcon,
+  ExternalLink,
+  Printer,
+} from "lucide-react";
 
-import { getDocumentRequestById } from "@/lib/secretary-data";
+import {
+  getDocumentRequestById,
+  getDocumentTypeById,
+} from "@/lib/secretary-data";
 import { formatFieldValue, requestHasPayment } from "@/lib/documents";
+import { Button } from "@/components/ui/button";
+import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
 import {
   formatDate,
   formatDateTime,
@@ -29,6 +40,13 @@ export default async function SecretaryRequestPage({
 
   const backHref = `/secretary/${id}/requests`;
   const hasPayment = requestHasPayment(request);
+
+  // Printing requires both a designed layout and the exact READY status.
+  const type = request.documentTypeId
+    ? await getDocumentTypeById(request.documentTypeId)
+    : null;
+  const canPrint =
+    request.status === DocumentRequestStatus.READY && Boolean(type?.template);
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6">
@@ -73,7 +91,15 @@ export default async function SecretaryRequestPage({
               </div>
             </dl>
 
-            <div className="border-t border-border pt-4">
+            <div className="flex flex-col gap-3 border-t border-border pt-4">
+              {canPrint && (
+                <Button asChild>
+                  <Link href={`${backHref}/${request.id}/print`}>
+                    <Printer />
+                    Print document
+                  </Link>
+                </Button>
+              )}
               <RequestReadyAction
                 requestId={request.id}
                 status={request.status}

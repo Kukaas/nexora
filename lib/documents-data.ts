@@ -34,6 +34,9 @@ export async function getActiveDocumentTypes(): Promise<DocumentTypeDTO[]> {
     turnaroundDays: row.turnaroundDays,
     active: row.active,
     fields: parseDocumentFields(row.fields),
+    template: row.template ?? null,
+    paperSize: row.paperSize,
+    orientation: row.orientation,
     requestCount: 0,
     updatedAt: null,
   }));
@@ -56,6 +59,9 @@ export async function getActiveDocumentTypeById(
     turnaroundDays: row.turnaroundDays,
     active: row.active,
     fields: parseDocumentFields(row.fields),
+    template: row.template ?? null,
+    paperSize: row.paperSize,
+    orientation: row.orientation,
     requestCount: 0,
     updatedAt: null,
   };
@@ -76,6 +82,9 @@ export async function getDocumentTypeById(
     turnaroundDays: row.turnaroundDays,
     active: row.active,
     fields: parseDocumentFields(row.fields),
+    template: row.template ?? null,
+    paperSize: row.paperSize,
+    orientation: row.orientation,
     requestCount: 0,
     updatedAt: null,
   };

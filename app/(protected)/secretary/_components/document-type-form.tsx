@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  FileText,
   ListPlus,
   Plus,
   Trash2,
@@ -128,8 +129,15 @@ export function DocumentTypeForm({
       toast.error(result.error);
       return;
     }
-    toast.success(editing ? "Document updated." : "Document added.");
-    router.push(backHref);
+    // After adding a new document, send the secretary straight into the layout
+    // designer; on edit, return to the catalog as before.
+    if (editing) {
+      toast.success("Document updated.");
+      router.push(backHref);
+    } else {
+      toast.success("Document added. Now design its printed layout.");
+      router.push(`${backHref}/${result.id}/design`);
+    }
     router.refresh();
   };
 
@@ -311,6 +319,14 @@ export function DocumentTypeForm({
           </AlertDialog>
         )}
         <div className="ml-auto flex gap-2">
+          {editing && (
+            <Button variant="outline" asChild disabled={busy}>
+              <Link href={`${backHref}/${editing.id}/design`}>
+                <FileText />
+                Design layout
+              </Link>
+            </Button>
+          )}
           <Button variant="outline" asChild disabled={busy}>
             <Link href={backHref}>Cancel</Link>
           </Button>

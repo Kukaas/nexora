@@ -61,6 +61,9 @@ export default async function ResidentRequestEditPage({
         turnaroundDays: 0,
         active: false,
         fields: [],
+        template: null,
+        paperSize: "A4",
+        orientation: "portrait",
         requestCount: 0,
         updatedAt: null,
       };
