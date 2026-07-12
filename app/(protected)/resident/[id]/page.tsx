@@ -24,7 +24,7 @@ import { getSession } from "@/lib/session";
 import { getResidencyStatus, type ResidencyStatus } from "@/lib/profile";
 import {
   getMyDocumentRequests,
-  getPublishedAnnouncements,
+  getPublishedAnnouncementsPage,
 } from "@/lib/documents-data";
 import Link from "next/link";
 
@@ -65,7 +65,8 @@ export default async function ResidentPage({
   // request-only queries since they can't transact yet.
   const [myRequests, announcements] = await Promise.all([
     verified ? getMyDocumentRequests(session.user.id) : Promise.resolve([]),
-    getPublishedAnnouncements(),
+    // Just a preview on the dashboard; the full, paginated list is its own page.
+    getPublishedAnnouncementsPage({ take: 4 }),
   ]);
 
   return (
@@ -116,7 +117,11 @@ export default async function ResidentPage({
           ) : (
             <ReviewNotice status={residency} />
           )}
-          <AnnouncementsFeed announcements={announcements} />
+          <AnnouncementsFeed
+            announcements={announcements.items}
+            hasMore={announcements.hasMore}
+            moreHref={`/resident/${id}/announcements`}
+          />
         </div>
 
         <aside className="space-y-6">

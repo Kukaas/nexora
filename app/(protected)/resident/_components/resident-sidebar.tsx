@@ -90,11 +90,15 @@ export function ResidentSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Announcements">
-                  <a href="#announcements" onClick={closeOnMobile}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(`${home}/announcements`)}
+                  tooltip="Announcements"
+                >
+                  <Link href={`${home}/announcements`} onClick={closeOnMobile}>
                     <Megaphone />
                     <span>Announcements</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 

@@ -10,7 +10,10 @@ import {
   type DocumentTypeDTO,
 } from "@/lib/documents";
 import type { PaymentMethodDTO } from "@/lib/payments";
-import { PaymentMethodType } from "@/app/generated/prisma/enums";
+import {
+  AnnouncementCategory,
+  PaymentMethodType,
+} from "@/app/generated/prisma/enums";
 import { METHOD_ORDER } from "@/lib/payments";
 
 /**
@@ -167,15 +170,48 @@ export async function getActionNeededCount(userId: string): Promise<number> {
   });
 }
 
-/** Published announcements for the resident feed, pinned first. */
-export async function getPublishedAnnouncements(): Promise<AnnouncementDTO[]> {
+/**
+ * How many announcements the dedicated feed loads per "page". Small on purpose:
+ * residents are often on budget phones over slow links, so we render a first
+ * batch and let them pull the rest with a "Load more" button instead of
+ * shipping every published notice (and every event image) up front.
+ */
+export const ANNOUNCEMENTS_PAGE_SIZE = 8;
+
+export type AnnouncementsPage = {
+  items: AnnouncementDTO[];
+  /** Whether another page exists after this one. */
+  hasMore: boolean;
+};
+
+/**
+ * A page of published announcements, pinned first then newest, optionally
+ * scoped to one category. `skip` is the number already shown; `take` defaults
+ * to {@link ANNOUNCEMENTS_PAGE_SIZE}. We fetch one extra row to know whether a
+ * "Load more" is worth offering without a second count query.
+ */
+export async function getPublishedAnnouncementsPage(opts: {
+  skip?: number;
+  take?: number;
+  category?: AnnouncementCategory | null;
+} = {}): Promise<AnnouncementsPage> {
+  const take = opts.take ?? ANNOUNCEMENTS_PAGE_SIZE;
+  const skip = opts.skip ?? 0;
+
   const rows = await prisma.announcement.findMany({
-    where: { published: true },
+    where: {
+      published: true,
+      ...(opts.category ? { category: opts.category } : {}),
+    },
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+    skip,
+    take: take + 1,
     include: {
       author: { select: { name: true, firstName: true, lastName: true } },
     },
   });
 
-  return rows.map(toAnnouncementDTO);
+  const hasMore = rows.length > take;
+  const items = (hasMore ? rows.slice(0, take) : rows).map(toAnnouncementDTO);
+  return { items, hasMore };
 }
