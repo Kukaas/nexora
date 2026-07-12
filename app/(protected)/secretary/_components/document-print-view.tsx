@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { mergeHtml } from "@/lib/tiptap/merge-html";
-import { paperLayout } from "@/lib/documents";
+import { mmToPx, paperLayout } from "@/lib/documents";
 
 /**
  * Renders a request's document ready to print: the type's designed layout with
@@ -27,11 +27,33 @@ export function DocumentPrintView({
   paperSize: string;
   orientation: string;
 }) {
-  const merged = useMemo(
-    () => mergeHtml(templateHtml, context),
-    [templateHtml, context],
-  );
+  // mergeHtml uses DOMParser (browser-only), so resolve the placeholders after
+  // mount. On the server / first client render the sheet is empty (matching
+  // markup, no hydration mismatch); the merged document fills in on the client.
+  const [merged, setMerged] = useState("");
+  useEffect(() => {
+    setMerged(mergeHtml(templateHtml, context));
+  }, [templateHtml, context]);
+
   const layout = paperLayout(paperSize, orientation);
+  // Render the sheet at its true pixel size (A4 = 794×1123px @96dpi) and scale it
+  // to fit the viewport — the exact technique the designer uses — so text wraps
+  // and floating elements sit identically to what the secretary designed (and to
+  // what prints). A plain `min(width, 100%)` shrank the width but not the font, so
+  // a narrow screen wrapped the preview differently from the editor and the PDF.
+  const pageW = mmToPx(layout.width);
+  const pageH = mmToPx(layout.height);
+  const fitRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = fitRef.current;
+    if (!el) return;
+    const update = () => setScale(Math.min(1, el.clientWidth / pageW));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [pageW]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,15 +77,40 @@ export function DocumentPrintView({
         </Button>
       </div>
 
-      <div className="flex justify-center overflow-auto bg-muted/40 p-4 sm:p-8 print:block print:overflow-visible print:bg-transparent print:p-0">
-        <div
-          className="nx-doc nx-doc-print"
-          style={{
-            width: `min(${layout.width}, 100%)`,
-            ["--nx-page-h" as string]: layout.height,
-          }}
-          dangerouslySetInnerHTML={{ __html: merged }}
-        />
+      <div className="overflow-auto bg-muted/40 p-4 sm:p-8 print:block print:overflow-visible print:bg-transparent print:p-0">
+        <div ref={fitRef} className="w-full">
+          {/* Reserve the scaled footprint so the scroll area sizes correctly.
+              Collapsed for print (nx-doc-fit) since the sheet goes out of flow. */}
+          <div
+            className="nx-doc-fit mx-auto"
+            style={{ width: pageW * scale, height: pageH * scale }}
+          >
+            {/* True-size page, scaled to fit — a 1:1 preview of the printed PDF.
+                @media print pins it to the page at true size (see globals.css). */}
+            <div
+              className="nx-doc nx-doc-print"
+              style={{
+                width: pageW,
+                height: pageH,
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+                ["--nx-page-w" as string]: `${pageW}px`,
+                ["--nx-page-h" as string]: `${pageH}px`,
+              }}
+            >
+              {/* Mirror the designer's DOM exactly: the merged HTML lives in a
+                  relative `.nx-doc-editor` (page minus the sheet padding), so a
+                  floating element's percentage x/y/width resolves against the
+                  same inset box the secretary designed against. Rendering it
+                  straight into `.nx-doc` resolved those percentages against the
+                  full sheet, shifting every element right and overflowing. */}
+              <div
+                className="nx-doc-editor"
+                dangerouslySetInnerHTML={{ __html: merged }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

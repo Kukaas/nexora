@@ -9,6 +9,8 @@ import {
   type NodeViewProps,
 } from "@tiptap/react";
 import { GripVertical, Trash2 } from "lucide-react";
+import { ResizeHandles, X_DIRS, type Box } from "./resize-handles";
+import { beginGuides, updateGuides, endGuides } from "./alignment-guides";
 
 /**
  * A freely-placed, editable text box — the building block of the document
@@ -74,7 +76,7 @@ export const FloatingText = Node.create({
       "div",
       mergeAttributes(HTMLAttributes, {
         "data-floating-text": "",
-        style: `position:absolute;left:${x}%;top:${y}%;width:${width}%;`,
+        style: `position:absolute;left:${x}%;top:${y}%;width:${width}%;z-index:3;`,
       }),
       0,
     ];
@@ -82,6 +84,26 @@ export const FloatingText = Node.create({
 
   addNodeView() {
     return ReactNodeViewRenderer(FloatingTextView);
+  },
+
+  addKeyboardShortcuts() {
+    return {
+      // Treat a text box as its own document: "select all" from inside a box
+      // selects only that box's text, not the whole page. Outside a box it
+      // falls through to the editor's default whole-document select-all.
+      "Mod-a": () => {
+        const { $from } = this.editor.state.selection;
+        for (let depth = $from.depth; depth > 0; depth--) {
+          if ($from.node(depth).type.name === this.name) {
+            return this.editor.commands.setTextSelection({
+              from: $from.start(depth),
+              to: $from.end(depth),
+            });
+          }
+        }
+        return false;
+      },
+    };
   },
 });
 
@@ -100,7 +122,7 @@ function FloatingTextView({
     wrapRef.current?.closest(".nx-doc")?.getBoundingClientRect() ?? null;
 
   const startMove = (event: React.PointerEvent) => {
-    if (!editable) return;
+    if (!editable || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     const rect = sheetRect();
@@ -109,41 +131,37 @@ function FloatingTextView({
     const startY = event.clientY;
     const originX = x;
     const originY = y;
+    const sheetEl = wrapRef.current?.closest<HTMLElement>(".nx-doc") ?? null;
+    const session = beginGuides(sheetEl, wrapRef.current);
     setBusy(true);
 
     const onMove = (e: PointerEvent) => {
       const dx = ((e.clientX - startX) / rect.width) * 100;
       const dy = ((e.clientY - startY) / rect.height) * 100;
-      updateAttributes({
-        x: clamp(originX + dx, -5, 100),
-        y: clamp(originY + dy, -5, 100),
-      });
+      const heightPct = wrapRef.current
+        ? (wrapRef.current.offsetHeight / rect.height) * 100
+        : 0;
+      // Hold the box's right/bottom edge on the page (top/left may bleed a little)
+      // so it prints where it's placed instead of being clipped off the sheet.
+      const maxX = Math.max(-5, 100 - width);
+      const maxY = Math.max(-5, 100 - heightPct);
+      let nextX = clamp(originX + dx, -5, maxX);
+      let nextY = clamp(originY + dy, -5, maxY);
+      if (session) {
+        ({ x: nextX, y: nextY } = updateGuides(session, {
+          x: nextX,
+          y: nextY,
+          width,
+          height: heightPct,
+        }));
+        nextX = clamp(nextX, -5, maxX);
+        nextY = clamp(nextY, -5, maxY);
+      }
+      updateAttributes({ x: nextX, y: nextY });
     };
     const onUp = () => {
       setBusy(false);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-  };
-
-  const startResize = (event: React.PointerEvent) => {
-    if (!editable) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const rect = sheetRect();
-    if (!rect) return;
-    const startX = event.clientX;
-    const originW = width;
-    setBusy(true);
-
-    const onMove = (e: PointerEvent) => {
-      const dw = ((e.clientX - startX) / rect.width) * 100;
-      updateAttributes({ width: clamp(originW + dw, 8, 100) });
-    };
-    const onUp = () => {
-      setBusy(false);
+      endGuides(session);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
@@ -192,12 +210,12 @@ function FloatingTextView({
       <NodeViewContent className="nx-float-text-content" />
 
       {editable && (
-        <span
-          role="presentation"
-          aria-label="Resize text box"
-          className="nx-float-resize"
-          onPointerDown={startResize}
-          contentEditable={false}
+        <ResizeHandles
+          dirs={X_DIRS}
+          sheetRect={sheetRect}
+          getBox={(): Box => ({ x, y, width, height: 0 })}
+          onResize={(box) => updateAttributes({ x: box.x, width: box.width })}
+          onActive={setBusy}
         />
       )}
     </NodeViewWrapper>

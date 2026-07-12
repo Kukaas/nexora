@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   useEditor,
@@ -18,7 +18,8 @@ import {
 } from "@tiptap/extension-text-style";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { TableKit } from "@tiptap/extension-table";
-import { TextSelection } from "@tiptap/pm/state";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { Slice, Fragment, type Node as PMNode } from "@tiptap/pm/model";
 import {
   ArrowLeft,
   AlignCenter,
@@ -27,6 +28,9 @@ import {
   AlignRight,
   AlignVerticalSpaceAround,
   AlignHorizontalSpaceAround,
+  AlignHorizontalJustifyStart,
+  AlignHorizontalJustifyCenter,
+  AlignHorizontalJustifyEnd,
   Baseline,
   Bold,
   Braces,
@@ -34,11 +38,15 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Circle,
   Italic,
   List,
   ListOrdered,
+  Minus,
   Pilcrow,
   Redo2,
+  Shapes,
+  Square,
   Strikethrough,
   Table as TableIcon,
   Underline,
@@ -74,6 +82,7 @@ import {
 import { saveDocumentTemplate } from "@/lib/secretary-actions";
 import {
   MERGE_SYSTEM_TOKENS,
+  mmToPx,
   ORIENTATIONS,
   PAPER_SIZES,
   paperLayout,
@@ -85,8 +94,10 @@ import {
 } from "@/lib/documents";
 import { MergeField } from "@/lib/tiptap/merge-field";
 import { LetterSpacing } from "@/lib/tiptap/letter-spacing";
+import { DocumentKeymap } from "@/lib/tiptap/document-keymap";
 import { FloatingImage } from "@/lib/tiptap/floating-image";
 import { FloatingText } from "@/lib/tiptap/floating-text";
+import { FloatingShape, type ShapeKind } from "@/lib/tiptap/floating-shape";
 import { ImageLibraryDialog } from "./image-library-dialog";
 
 /** Font stacks offered in the toolbar. Values are real CSS stacks so the print
@@ -119,6 +130,64 @@ const LETTER_SPACINGS = [
   { label: "4px", value: "4px" },
 ];
 
+const FLOATING_NODES = new Set([
+  "floatingText",
+  "floatingImage",
+  "floatingShape",
+]);
+
+/** Horizontal page padding of the sheet (globals.css `.nx-doc` → `padding … 56px`).
+ * Left/right placement snaps a floating box to this text margin — the same edge
+ * the in-flow body text sits at — rather than the raw paper edge. */
+const DOC_PADDING_X = 56;
+
+/** The floating element the placement controls act on: an atom image/shape held
+ * in a NodeSelection, or the floatingText box the text cursor currently sits in.
+ * Returns its document position and node, or null when nothing floating is active. */
+function currentFloating(
+  editor: Editor,
+): { pos: number; node: PMNode } | null {
+  const { selection } = editor.state;
+  if (
+    selection instanceof NodeSelection &&
+    FLOATING_NODES.has(selection.node.type.name)
+  ) {
+    return { pos: selection.from, node: selection.node };
+  }
+  const { $from } = selection;
+  for (let depth = $from.depth; depth > 0; depth--) {
+    const node = $from.node(depth);
+    if (node.type.name === "floatingText") {
+      return { pos: $from.before(depth), node };
+    }
+  }
+  return null;
+}
+
+/** Nudge any pasted free-canvas element down-right a little so a duplicate lands
+ * beside the original instead of exactly on top of it (which reads as one). */
+function offsetPastedFloats(slice: Slice): Slice {
+  const children: PMNode[] = [];
+  slice.content.forEach((child) => {
+    if (FLOATING_NODES.has(child.type.name) && typeof child.attrs.x === "number") {
+      children.push(
+        child.type.create(
+          {
+            ...child.attrs,
+            x: Math.min(child.attrs.x + 3, 92),
+            y: Math.min((child.attrs.y ?? 0) + 3, 96),
+          },
+          child.content,
+          child.marks,
+        ),
+      );
+    } else {
+      children.push(child);
+    }
+  });
+  return new Slice(Fragment.fromArray(children), slice.openStart, slice.openEnd);
+}
+
 /**
  * The full-width "Design document" editor: a Word-like Tiptap surface where the
  * secretary lays out the printed document (letterhead, body text, tables,
@@ -143,6 +212,23 @@ export function DocumentDesigner({
   );
 
   const layout = paperLayout(paperSize, orientation);
+  // Render the sheet at its true pixel size (A4 = 794×1123px @96dpi) and scale it
+  // to fit the window, so the font-to-page ratio matches the printed PDF exactly
+  // — otherwise a narrow editor shrinks the page but not the text, and wrapping
+  // no longer matches print.
+  const pageW = mmToPx(layout.width);
+  const pageH = mmToPx(layout.height);
+  const fitRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = fitRef.current;
+    if (!el) return;
+    const update = () => setScale(Math.min(1, el.clientWidth / pageW));
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [pageW]);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -161,11 +247,16 @@ export function DocumentDesigner({
       TableKit.configure({ table: { resizable: true } }),
       FloatingImage,
       FloatingText,
+      FloatingShape,
+      DocumentKeymap,
       MergeField,
     ],
     content: documentType.template ?? "<p></p>",
     editorProps: {
       attributes: { class: "nx-doc-editor focus:outline-none" },
+      // Paste a copied element slightly offset (Word-style) instead of exactly
+      // on top of the original, so a duplicate is visible rather than stacked.
+      transformPasted: offsetPastedFloats,
     },
   });
 
@@ -295,23 +386,34 @@ export function DocumentDesigner({
             editor={editor}
             fields={documentType.fields}
             mediaAssets={mediaAssets}
+            sheetWidthPx={pageW}
           />
         )}
-        <div className="max-h-[70vh] overflow-auto bg-muted/40 p-4 sm:p-8">
-          <p className="mx-auto mb-3 max-w-fit text-xs text-muted-foreground">
-            Double-click a blank spot on the paper to add text there.
-          </p>
-          {/* The sheet mirrors the printed page at the chosen paper size. */}
-          <div
-            className="nx-doc mx-auto"
-            onDoubleClick={addTextBox}
-            style={{
-              width: `min(${layout.width}, 100%)`,
-              // Drives the editor's min-height so the sheet reads as a real page.
-              ["--nx-page-h" as string]: layout.height,
-            }}
-          >
-            <EditorContent editor={editor} />
+        <div className="max-h-[78vh] overflow-auto bg-muted/40 p-4 sm:p-8">
+          <div ref={fitRef} className="w-full">
+            <p className="mx-auto mb-3 max-w-fit text-xs text-muted-foreground">
+              Double-click a blank spot on the paper to add text there.
+            </p>
+            {/* Reserve the scaled footprint so the scroll area sizes correctly. */}
+            <div
+              className="mx-auto"
+              style={{ width: pageW * scale, height: pageH * scale }}
+            >
+              {/* True-size page, scaled to fit — a 1:1 preview of the printed PDF. */}
+              <div
+                className="nx-doc"
+                onDoubleClick={addTextBox}
+                style={{
+                  width: pageW,
+                  height: pageH,
+                  transform: `scale(${scale})`,
+                  transformOrigin: "top left",
+                  ["--nx-page-h" as string]: `${pageH}px`,
+                }}
+              >
+                <EditorContent editor={editor} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -324,10 +426,12 @@ function Toolbar({
   editor,
   fields,
   mediaAssets,
+  sheetWidthPx,
 }: {
   editor: Editor;
   fields: DocumentTypeDTO["fields"];
   mediaAssets: MediaAssetDTO[];
+  sheetWidthPx: number;
 }) {
   const toolbarState = useEditorState({
     editor,
@@ -360,6 +464,7 @@ function Toolbar({
         bulletList: currentEditor.isActive("bulletList"),
         orderedList: currentEditor.isActive("orderedList"),
         inTable: currentEditor.isActive("table"),
+        floatingSelected: currentFloating(currentEditor) !== null,
         canUndo: currentEditor.can().undo(),
         canRedo: currentEditor.can().redo(),
       };
@@ -368,6 +473,36 @@ function Toolbar({
 
   const applyAlign = (align: "left" | "center" | "right" | "justify") => {
     editor.chain().focus().setTextAlign(align).run();
+  };
+
+  // Snap the active floating box to the page: flush against the left/right text
+  // margin, or centered between them. Geometry is a % of the sheet, so the same
+  // math reproduces exactly at print (see currentFloating / DOC_PADDING_X).
+  const placeFloating = (align: "left" | "center" | "right") => {
+    const target = currentFloating(editor);
+    if (!target) return;
+    const width = Number(target.node.attrs.width) || 0;
+    const marginPct = (DOC_PADDING_X / sheetWidthPx) * 100;
+    const x =
+      align === "left"
+        ? marginPct
+        : align === "right"
+          ? 100 - marginPct - width
+          : 50 - width / 2;
+    // Keep the box on the page (right edge held; slight left bleed allowed), the
+    // same bounds the drag/resize clamps enforce.
+    const clamped = clamp(x, -5, Math.max(-5, 100 - width));
+    editor
+      .chain()
+      .focus()
+      .command(({ tr }) => {
+        tr.setNodeMarkup(target.pos, undefined, {
+          ...target.node.attrs,
+          x: Math.round(clamped * 100) / 100,
+        });
+        return true;
+      })
+      .run();
   };
 
   return (
@@ -578,6 +713,35 @@ function Toolbar({
 
       <Bar />
 
+      {/* Place the selected floating box on the page (left / center / right of the
+          text margin). Only shown while a box/image/shape is active. */}
+      {toolbarState.floatingSelected && (
+        <>
+          <Group>
+            <ToolButton
+              label="Place box at left margin"
+              onClick={() => placeFloating("left")}
+            >
+              <AlignHorizontalJustifyStart />
+            </ToolButton>
+            <ToolButton
+              label="Center box on page"
+              onClick={() => placeFloating("center")}
+            >
+              <AlignHorizontalJustifyCenter />
+            </ToolButton>
+            <ToolButton
+              label="Place box at right margin"
+              onClick={() => placeFloating("right")}
+            >
+              <AlignHorizontalJustifyEnd />
+            </ToolButton>
+          </Group>
+
+          <Bar />
+        </>
+      )}
+
       {/* Lists */}
       <Group>
         <ToolButton
@@ -598,10 +762,11 @@ function Toolbar({
 
       <Bar />
 
-      {/* Insert: tables, images, merge fields */}
+      {/* Insert: tables, images, shapes, merge fields */}
       <Group>
         <TableMenu editor={editor} inTable={toolbarState.inTable} />
         <ImageLibraryDialog editor={editor} initialAssets={mediaAssets} />
+        <ShapesMenu editor={editor} />
       </Group>
 
       {/* Insert field: right-aligned on wide screens, wraps on narrow ones. */}
@@ -741,6 +906,43 @@ function TableMenu({
         >
           Delete table
         </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ShapesMenu({ editor }: { editor: Editor }) {
+  const shapes: { kind: ShapeKind; label: string; icon: React.ReactNode }[] = [
+    { kind: "rect", label: "Rectangle", icon: <Square className="size-3.5" /> },
+    { kind: "ellipse", label: "Ellipse", icon: <Circle className="size-3.5" /> },
+    { kind: "line", label: "Line", icon: <Minus className="size-3.5" /> },
+  ];
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-1" aria-label="Shapes">
+              <Shapes className="size-4" />
+              <ChevronDown className="size-3.5 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Insert shape</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel>Shapes</DropdownMenuLabel>
+        {shapes.map((s) => (
+          <DropdownMenuItem
+            key={s.kind}
+            onClick={() =>
+              editor.chain().focus().setFloatingShape({ shape: s.kind }).run()
+            }
+          >
+            {s.icon}
+            {s.label}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

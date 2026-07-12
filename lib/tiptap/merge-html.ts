@@ -12,6 +12,10 @@ export function mergeHtml(
   html: string,
   context: Record<string, string>,
 ): string {
+  // Browser-only (DOMParser). If ever called on the server, return the template
+  // unchanged rather than throwing — callers resolve it again on the client.
+  if (typeof DOMParser === "undefined") return html;
+
   const doc = new DOMParser().parseFromString(html, "text/html");
 
   doc.querySelectorAll<HTMLElement>("[data-merge]").forEach((el) => {

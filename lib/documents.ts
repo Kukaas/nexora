@@ -256,6 +256,7 @@ export function formatFieldValue(field: {
 export const MERGE_SYSTEM_TOKENS = [
   { key: "requesterName", label: "Requester name" },
   { key: "documentName", label: "Document name" },
+  { key: "purpose", label: "Purpose" },
   { key: "referenceNumber", label: "Reference number" },
   { key: "orNumber", label: "OR number" },
   { key: "fee", label: "Fee" },
@@ -300,6 +301,11 @@ export const ORIENTATIONS = [
 ] as const;
 
 export type Orientation = (typeof ORIENTATIONS)[number]["value"];
+
+/** CSS px for a paper dimension given in millimetres (96dpi, the print baseline). */
+export function mmToPx(mm: string): number {
+  return (parseFloat(mm) * 96) / 25.4;
+}
 
 /**
  * Resolve a paper size + orientation into the values the sheet and print need:
@@ -358,6 +364,7 @@ export function buildMergeContext(
   // System tokens.
   context.requesterName = request.requesterName;
   context.documentName = request.documentName;
+  context.purpose = request.purpose ?? "";
   context.referenceNumber = request.referenceNumber;
   context.orNumber = request.orNumber ?? "";
   context.fee = request.fee > 0 ? formatPeso(request.fee) : "Free";
