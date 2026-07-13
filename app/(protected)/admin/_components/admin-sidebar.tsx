@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   LayoutDashboard,
+  MessagesSquare,
   Settings,
   ShieldCheck,
   UsersRound,
@@ -43,6 +44,7 @@ const MANAGE: NavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/admin/officials", label: "Officials", icon: ShieldCheck },
   { href: "/admin/residents", label: "Residents", icon: UsersRound },
+  { href: "/messages", label: "Messages", icon: MessagesSquare },
 ];
 
 export function AdminSidebar({ user }: { user: AdminUser }) {

@@ -48,6 +48,31 @@ export async function uploadImage(
 }
 
 /**
+ * Upload any chat attachment (image or file) with `resource_type: "auto"`, so
+ * photos, PDFs, and documents all get a working delivery URL. Returns the URL
+ * and Cloudinary's detected resource type ("image" for photos, "raw" for other
+ * files). Throws when uploads aren't configured or the upload fails.
+ */
+export async function uploadAttachment(
+  file: File,
+  folder: string,
+): Promise<{ url: string; resourceType: string }> {
+  if (!isCloudinaryConfigured()) {
+    throw new Error("Uploads aren't configured on the server.");
+  }
+
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const dataUri = `data:${file.type};base64,${bytes.toString("base64")}`;
+
+  const result = await cloudinary.uploader.upload(dataUri, {
+    folder,
+    resource_type: "auto",
+  });
+
+  return { url: result.secure_url, resourceType: result.resource_type };
+}
+
+/**
  * The Cloudinary public ID embedded in a delivery URL, or null if the URL isn't
  * a recognizable Cloudinary upload. e.g.
  * `https://res.cloudinary.com/x/image/upload/v123/nexora/government_id/ab.jpg`

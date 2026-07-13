@@ -8,6 +8,7 @@ import {
   Landmark,
   LayoutDashboard,
   Megaphone,
+  MessagesSquare,
   UserRound,
 } from "lucide-react";
 
@@ -37,9 +38,11 @@ import { SignOutMenuItem } from "../../_components/sign-out-menu-item";
 export function ResidentSidebar({
   user,
   actionNeeded,
+  messagesUnread,
 }: {
   user: ResidentUser;
   actionNeeded: number;
+  messagesUnread: boolean;
 }) {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
@@ -105,6 +108,27 @@ export function ResidentSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
+                  isActive={pathname.startsWith(`${home}/messages`)}
+                  tooltip="Messages"
+                >
+                  <Link href={`${home}/messages`} onClick={closeOnMobile}>
+                    <MessagesSquare />
+                    <span>Messages</span>
+                  </Link>
+                </SidebarMenuButton>
+                {messagesUnread && (
+                  <SidebarMenuBadge className="text-primary">
+                    <span
+                      className="size-2 rounded-full bg-primary"
+                      aria-label="Unread messages"
+                    />
+                  </SidebarMenuBadge>
+                )}
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
                   isActive={pathname.startsWith(`${home}/requests`)}
                   tooltip="My requests"
                 >
@@ -144,13 +168,16 @@ export function ResidentSidebar({
               </SidebarMenuItem>
 
               <SidebarMenuItem>
-                <SidebarMenuButton aria-disabled tooltip="Barangay officials">
-                  <Landmark />
-                  <span>Barangay officials</span>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(`${home}/officials`)}
+                  tooltip="Barangay officials"
+                >
+                  <Link href={`${home}/officials`} onClick={closeOnMobile}>
+                    <Landmark />
+                    <span>Barangay officials</span>
+                  </Link>
                 </SidebarMenuButton>
-                <SidebarMenuBadge className="text-muted-foreground">
-                  Soon
-                </SidebarMenuBadge>
               </SidebarMenuItem>
 
               <SidebarMenuItem>

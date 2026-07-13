@@ -43,6 +43,9 @@ model User {
   updatedDocumentTypes            DocumentType[]    @relation("DocumentTypeEditor")
   announcements                   Announcement[]    @relation("AnnouncementAuthor")
 
+  conversation                    Conversation?     @relation("ConversationResident")
+  sentMessages                    Message[]         @relation("MessageSender")
+
   @@unique([email])
   @@map("user")
 }
@@ -269,6 +272,52 @@ model Announcement {
 
   @@index([published, pinned])
   @@map("announcement")
+}
+
+/// The barangay message desk. One conversation per resident; any official can
+/// read and reply. Read timestamps drive the unread indicators on each side.
+model Conversation {
+  id                               String            @id @default(uuid())
+  residentId                       String            @unique @map("resident_id")
+  resident                         User              @relation("ConversationResident", fields: [residentId], references: [id], onDelete: Cascade)
+
+  messages                         Message[]
+
+  lastMessageAt                    DateTime          @default(now()) @map("last_message_at")
+  residentReadAt                   DateTime?         @map("resident_read_at")
+  officialReadAt                   DateTime?         @map("official_read_at")
+
+  createdAt                        DateTime          @default(now()) @map("created_at")
+  updatedAt                        DateTime          @updatedAt @map("updated_at")
+
+  @@index([lastMessageAt])
+  @@map("conversation")
+}
+
+model Message {
+  id                               String            @id @default(uuid())
+  conversationId                   String            @map("conversation_id")
+  conversation                     Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId                         String            @map("sender_id")
+  sender                           User              @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  kind                             MessageKind       @default(TEXT)
+  body                             String?
+  attachmentUrl                    String?           @map("attachment_url")
+  attachmentName                   String?           @map("attachment_name")
+  attachmentSize                   Int?              @map("attachment_size")
+
+  createdAt                        DateTime          @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("message")
+}
+
+enum MessageKind {
+  TEXT
+  IMAGE
+  FILE
 }
 
 enum DocumentRequestStatus {

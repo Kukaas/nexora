@@ -44,3 +44,18 @@ export function hasAccess(
   const owned = roles ?? [];
   return owned.includes(UserRoles.ADMIN) || owned.includes(area);
 }
+
+/** The roles that count as barangay officials (staff, not residents). */
+export const OFFICIAL_ROLES: UserRoles[] = [
+  UserRoles.ADMIN,
+  UserRoles.CAPTAIN,
+  UserRoles.SECRETARY,
+  UserRoles.TREASURER,
+  UserRoles.KAGAWAD,
+];
+
+/** Whether a user holds any official role (can staff the barangay message desk). */
+export function isOfficial(roles: UserRoles[] | undefined | null): boolean {
+  const owned = roles ?? [];
+  return owned.some((r) => OFFICIAL_ROLES.includes(r));
+}

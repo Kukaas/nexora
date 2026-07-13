@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, QrCode, Receipt } from "lucide-react";
+import { LayoutDashboard, MessagesSquare, QrCode, Receipt } from "lucide-react";
 
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -103,6 +103,19 @@ export function TreasurerSidebar({
                   <Link href={methods} onClick={closeOnMobile}>
                     <QrCode />
                     <span>Payment methods</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/messages")}
+                  tooltip="Resident messages"
+                >
+                  <Link href="/messages" onClick={closeOnMobile}>
+                    <MessagesSquare />
+                    <span>Messages</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

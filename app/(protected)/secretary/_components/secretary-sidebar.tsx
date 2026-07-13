@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileText, LayoutDashboard, Megaphone, ScrollText } from "lucide-react";
+import {
+  FileText,
+  LayoutDashboard,
+  Megaphone,
+  MessagesSquare,
+  ScrollText,
+} from "lucide-react";
 
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -117,6 +123,19 @@ export function SecretarySidebar({
                   <Link href={announcements} onClick={closeOnMobile}>
                     <Megaphone />
                     <span>Announcements</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/messages")}
+                  tooltip="Resident messages"
+                >
+                  <Link href="/messages" onClick={closeOnMobile}>
+                    <MessagesSquare />
+                    <span>Messages</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
