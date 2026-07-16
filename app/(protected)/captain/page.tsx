@@ -1,16 +1,14 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { RoleDashboard } from "../_components/role-dashboard";
+import { requireSession } from "@/lib/session";
 
-export const metadata: Metadata = {
-  title: "Captain · Barangay Libtangin",
-};
-
-export default function CaptainPage() {
-  return (
-    <RoleDashboard
-      title="Captain dashboard"
-      description="Oversee barangay operations, approvals, and reports."
-    />
-  );
+/**
+ * Bare `/captain` forwards to the captain's own id-scoped home
+ * (`/captain/{userId}`), where the dashboard lives. Keeping the canonical URL
+ * id-scoped means the captain's links are stable and unambiguous, matching the
+ * secretary and treasurer areas.
+ */
+export default async function CaptainIndex() {
+  const session = await requireSession();
+  redirect(`/captain/${session.user.id}`);
 }

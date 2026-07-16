@@ -136,13 +136,13 @@ export async function getRequestStatusCounts(
   return counts;
 }
 
-/** The most recent requests in a status, for the overview's short queues. */
+/** The most recent requests in a status (or across all), for overview queues. */
 export async function getRecentRequestsByStatus(
-  status: DocumentRequestStatus,
+  status: DocumentRequestStatus | "ALL",
   take: number,
 ): Promise<DocumentRequestDTO[]> {
   const rows = await prisma.documentRequest.findMany({
-    where: { status },
+    where: status === "ALL" ? undefined : { status },
     orderBy: { createdAt: "desc" },
     include: requestInclude,
     take,
