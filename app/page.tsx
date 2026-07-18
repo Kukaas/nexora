@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import QRCode from "qrcode";
 import {
   ArrowRight,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { getSession } from "@/lib/session";
 import {
   NexoraGlyph,
   NexoraMark,
@@ -106,6 +108,12 @@ const OFFICIAL_POINTS = [
 ];
 
 export default async function Home() {
+  // Signed-in users don't need the marketing page — send them to their area.
+  // /start resolves their role (and any first-login gates) and forwards them.
+  if (await getSession()) {
+    redirect("/start");
+  }
+
   // A real, scannable QR for the sample clearance. Rendered on the server, so it
   // ships as inline SVG with no client cost and no broken-image risk.
   const qrSvg = await QRCode.toString(
