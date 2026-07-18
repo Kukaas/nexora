@@ -3,12 +3,10 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import {
   AlertCircle,
   ArrowLeft,
   Banknote,
-  CalendarIcon,
   CheckCircle2,
   ImageUp,
   Maximize2,
@@ -24,26 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { DocumentFieldInput } from "@/components/document-field-input";
 import { PaymentMethodType } from "@/app/generated/prisma/enums";
 import { METHOD_LABELS, type PaymentMethodDTO } from "@/lib/payments";
-import {
-  turnaroundLabel,
-  type DocumentField,
-  type DocumentTypeDTO,
-} from "@/lib/documents";
+import { turnaroundLabel, type DocumentTypeDTO } from "@/lib/documents";
 import {
   submitDocumentRequest,
   updateDocumentRequest,
@@ -314,7 +296,7 @@ export function RequestForm({
             key={field.id}
             className={cn(field.type === "textarea" && "sm:col-span-2")}
           >
-            <FieldInput
+            <DocumentFieldInput
               field={field}
               value={answers[field.id] ?? ""}
               onChange={(value) => setAnswer(field.id, value)}
@@ -537,126 +519,6 @@ export function RequestForm({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-/** One custom field on the request form, rendered to match its configured type. */
-function FieldInput({
-  field,
-  value,
-  onChange,
-  disabled,
-}: {
-  field: DocumentField;
-  value: string;
-  onChange: (value: string) => void;
-  disabled: boolean;
-}) {
-  const id = useId();
-  const [dateOpen, setDateOpen] = useState(false);
-  const label = (
-    <Label htmlFor={id}>
-      {field.label}{" "}
-      {!field.required && (
-        <span className="font-normal text-muted-foreground">(optional)</span>
-      )}
-    </Label>
-  );
-
-  if (field.type === "date") {
-    // Values are stored as "yyyy-MM-dd"; parse at local midnight so the date
-    // never drifts a day across time zones.
-    const selected = value ? new Date(`${value}T00:00:00`) : undefined;
-    const valid = selected && !Number.isNaN(selected.getTime());
-    return (
-      <div className="flex flex-col gap-2">
-        {label}
-        <Popover open={dateOpen} onOpenChange={setDateOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              id={id}
-              type="button"
-              variant="outline"
-              disabled={disabled}
-              className={cn(
-                "h-9 w-full justify-start rounded-3xl bg-input/50 px-3 font-normal hover:bg-input/50",
-                !valid && "text-muted-foreground",
-              )}
-            >
-              <CalendarIcon
-                className="size-4 text-muted-foreground"
-                aria-hidden
-              />
-              {valid ? format(selected, "PPP") : `Select ${field.label.toLowerCase()}`}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={valid ? selected : undefined}
-              onSelect={(date) => {
-                onChange(date ? format(date, "yyyy-MM-dd") : "");
-                setDateOpen(false);
-              }}
-              captionLayout="dropdown"
-              startMonth={new Date(1920, 0)}
-              endMonth={new Date()}
-              defaultMonth={valid ? selected : new Date(2000, 0)}
-              disabled={{ after: new Date() }}
-              autoFocus
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-    );
-  }
-
-  if (field.type === "select") {
-    return (
-      <div className="flex flex-col gap-2">
-        {label}
-        <Select value={value} onValueChange={onChange} disabled={disabled}>
-          <SelectTrigger id={id} className="w-full">
-            <SelectValue placeholder="Select an option" />
-          </SelectTrigger>
-          <SelectContent>
-            {field.options.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    );
-  }
-
-  if (field.type === "textarea") {
-    return (
-      <div className="flex flex-col gap-2">
-        {label}
-        <Textarea
-          id={id}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          rows={3}
-          disabled={disabled}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      {label}
-      <Input
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        inputMode={field.type === "number" ? "numeric" : undefined}
-        disabled={disabled}
-      />
     </div>
   );
 }

@@ -17,7 +17,7 @@
  */
 import { hashPassword } from "better-auth/crypto";
 import { prisma } from "@/lib/prisma";
-import type { UserRoles } from "@/app/generated/prisma/enums";
+import type { Purok, UserRoles } from "@/app/generated/prisma/enums";
 
 const OFFICIALS_PASSWORD = process.env.OFFICIALS_PASSWORD ?? "ChangeMe!2026";
 
@@ -27,6 +27,8 @@ type OfficialSeed = {
   middleName?: string;
   lastName: string;
   email: string;
+  // A kagawad's assigned purok; required for that role (see lib/admin-actions.ts).
+  purok?: Purok;
 };
 
 // Better Auth lowercases stored emails, so emails are written lowercased to
@@ -58,6 +60,7 @@ const OFFICIALS: OfficialSeed[] = [
     firstName: "Antonio",
     lastName: "Bautista",
     email: "kagawad1@libtangin.gov.ph",
+    purok: "PUROK_1",
   },
   {
     role: "KAGAWAD",
@@ -65,6 +68,7 @@ const OFFICIALS: OfficialSeed[] = [
     middleName: "Lim",
     lastName: "Villanueva",
     email: "kagawad2@libtangin.gov.ph",
+    purok: "PUROK_2",
   },
 ];
 
@@ -73,6 +77,8 @@ async function seedOfficial(official: OfficialSeed, passwordHash: string) {
   const middleName = official.middleName ?? null;
   const email = official.email.toLowerCase();
   const name = [firstName, middleName, lastName].filter(Boolean).join(" ");
+  // Only a kagawad carries an assigned purok; drop it for any other role.
+  const purok = role === "KAGAWAD" ? (official.purok ?? null) : null;
 
   // Upsert the user with the official role and a pre-verified email so they can
   // sign in immediately, without the email-verification step.
@@ -83,6 +89,7 @@ async function seedOfficial(official: OfficialSeed, passwordHash: string) {
       firstName,
       middleName,
       lastName,
+      purok,
       emailVerified: true,
       roles: { set: [role] },
     },
@@ -92,6 +99,7 @@ async function seedOfficial(official: OfficialSeed, passwordHash: string) {
       firstName,
       middleName,
       lastName,
+      purok,
       emailVerified: true,
       roles: { set: [role] },
     },

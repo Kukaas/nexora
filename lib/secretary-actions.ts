@@ -9,10 +9,16 @@ import { hasAccess } from "@/lib/roles";
 import {
   AnnouncementCategory,
   DocumentRequestStatus,
+  PaymentMethodType,
   Purok,
   UserRoles,
 } from "@/app/generated/prisma/enums";
-import { DOCUMENT_FIELD_TYPES, isWithinLibtangin } from "@/lib/documents";
+import {
+  DOCUMENT_FIELD_TYPES,
+  isWithinLibtangin,
+  parseDocumentFields,
+  type DocumentFieldValue,
+} from "@/lib/documents";
 import { deleteCloudinaryImage, uploadImage } from "@/lib/cloudinary";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -103,6 +109,120 @@ export async function markRequestClaimed(input: {
 
   revalidateSecretary(auth.userId);
   return { ok: true };
+}
+
+const walkInRequestSchema = z.object({
+  documentTypeId: z.string().min(1),
+  purpose: z.string().trim().max(300).optional(),
+  // Answers to the document's custom fields, keyed by field id.
+  answers: z.record(z.string(), z.string()).optional(),
+});
+
+/**
+ * The secretary encodes a request at the desk for a resident who has no
+ * account. It starts at PENDING like any other request, but carries no payment
+ * yet: the resident takes the reference number (on a printed slip or written
+ * down) to the treasurer, who records how it was actually paid — cash or
+ * e-wallet — when verifying. A null `requesterId` is what marks it a walk-in.
+ */
+export async function createWalkInRequest(
+  input: z.infer<typeof walkInRequestSchema>,
+): Promise<
+  | { ok: true; id: string; referenceNumber: string }
+  | { ok: false; error: string }
+> {
+  const auth = await requireSecretary();
+  if (!auth.ok) return auth;
+
+  const parsed = walkInRequestSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error:
+        parsed.error.issues[0]?.message ?? "Please check the details and try again.",
+    };
+  }
+  const { documentTypeId, purpose } = parsed.data;
+
+  const docType = await prisma.documentType.findUnique({
+    where: { id: documentTypeId },
+    select: { id: true, name: true, fee: true, active: true, fields: true },
+  });
+  if (!docType || !docType.active) {
+    return { ok: false, error: "That document isn't available to request right now." };
+  }
+
+  // Validate the answers against the catalog fields and snapshot label/type/
+  // value onto the request, exactly like a resident's own submission.
+  const answers = parsed.data.answers ?? {};
+  const fields = parseDocumentFields(docType.fields);
+  const fieldValues: DocumentFieldValue[] = [];
+  for (const field of fields) {
+    const value = (answers[field.id] ?? "").trim();
+    if (field.required && !value) {
+      return { ok: false, error: `Please fill in "${field.label}".` };
+    }
+    if (
+      value &&
+      field.type === "select" &&
+      field.options.length > 0 &&
+      !field.options.includes(value)
+    ) {
+      return { ok: false, error: `Choose a valid option for "${field.label}".` };
+    }
+    fieldValues.push({ label: field.label, type: field.type, value });
+  }
+
+  // The resident's name isn't asked for separately — the document carries its
+  // own name field (e.g. "Full name"). Use that answer to label the request in
+  // lists and on the payment slip, falling back only if the document has no
+  // name field at all.
+  const nameValue = fieldValues.find(
+    (f) => f.type === "text" && f.label.toLowerCase().includes("name") && f.value,
+  )?.value;
+  const requesterName = nameValue || "Walk-in resident";
+
+  const referenceNumber = await uniqueReference();
+
+  // Start the payment as CASH; the treasurer re-stamps the actual method (cash
+  // or e-wallet paid at the desk) when they verify the payment.
+  const created = await prisma.documentRequest.create({
+    data: {
+      referenceNumber,
+      documentTypeId: docType.id,
+      documentName: docType.name,
+      fee: docType.fee,
+      purpose: purpose || null,
+      fieldValues,
+      method: PaymentMethodType.CASH,
+      requesterId: null,
+      requesterName,
+    },
+    select: { id: true },
+  });
+
+  revalidatePath(`/secretary/${auth.userId}/requests`);
+  revalidatePath("/treasurer", "layout");
+  return { ok: true, id: created.id, referenceNumber };
+}
+
+/**
+ * A short, human-readable reference like `BRGY-2026-04217`, matching the format
+ * resident submissions get (see lib/document-actions.ts). Retries on the rare
+ * chance two requests draw the same random suffix in the same year.
+ */
+async function uniqueReference(): Promise<string> {
+  const year = new Date().getFullYear();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const suffix = String(Math.floor(10000 + Math.random() * 90000));
+    const candidate = `BRGY-${year}-${suffix}`;
+    const taken = await prisma.documentRequest.findUnique({
+      where: { referenceNumber: candidate },
+      select: { id: true },
+    });
+    if (!taken) return candidate;
+  }
+  return `BRGY-${year}-${Date.now().toString().slice(-6)}`;
 }
 
 // ── Document types (catalog) ─────────────────────────────────────────────────

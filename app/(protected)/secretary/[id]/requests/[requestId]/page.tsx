@@ -22,6 +22,7 @@ import {
   formatPeso,
   MethodBadge,
   RequestStatusBadge,
+  WalkInBadge,
 } from "../../../_components/secretary-ui";
 import { RequestReadyAction } from "../../../_components/request-ready-action";
 
@@ -41,15 +42,19 @@ export default async function SecretaryRequestPage({
   const backHref = `/secretary/${id}/requests`;
   const hasPayment = requestHasPayment(request);
 
-  // Printing requires both a designed layout and the exact READY status.
+  // Printing requires a designed layout, and stays available once the request
+  // is ready — including after it's claimed, so a lost/misprinted copy can be
+  // reprinted.
   const type = request.documentTypeId
     ? await getDocumentTypeById(request.documentTypeId)
     : null;
+  const claimed = request.status === DocumentRequestStatus.CLAIMED;
   const canPrint =
-    request.status === DocumentRequestStatus.READY && Boolean(type?.template);
+    (request.status === DocumentRequestStatus.READY || claimed) &&
+    Boolean(type?.template);
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <Link
         href={backHref}
         className="inline-flex w-fit items-center gap-1.5 rounded-2xl text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/30"
@@ -62,8 +67,9 @@ export default async function SecretaryRequestPage({
         <h1 className="text-2xl font-semibold tracking-tight text-balance">
           {request.documentName}
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
           Requested by {request.requesterName}
+          {request.walkIn && <WalkInBadge />}
         </p>
       </header>
 
@@ -93,10 +99,20 @@ export default async function SecretaryRequestPage({
 
             <div className="flex flex-col gap-3 border-t border-border pt-4">
               {canPrint && (
-                <Button asChild>
+                <Button asChild variant={claimed ? "outline" : "default"}>
                   <Link href={`${backHref}/${request.id}/print`}>
                     <Printer />
-                    Print document
+                    {claimed ? "Reprint document" : "Print document"}
+                  </Link>
+                </Button>
+              )}
+              {/* While payment is still owed, the secretary can (re)print the
+                  slip the resident takes to the treasurer. */}
+              {request.status === DocumentRequestStatus.PENDING && (
+                <Button variant="outline" asChild>
+                  <Link href={`${backHref}/${request.id}/slip`}>
+                    <Printer />
+                    Print payment slip
                   </Link>
                 </Button>
               )}

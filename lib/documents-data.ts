@@ -114,6 +114,7 @@ function toMyRequestDTO(
     resubmitNote: row.resubmitNote,
     requesterName: row.requesterName,
     requesterEmail: null,
+    walkIn: row.requesterId === null,
     reviewedByName: null,
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     releasedAt: row.releasedAt?.toISOString() ?? null,

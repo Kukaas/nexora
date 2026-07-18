@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { UserPlus } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import {
   getDocumentRequestsPage,
   getRequestStatusCounts,
@@ -40,14 +43,22 @@ export default async function SecretaryRequestsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Document requests
-        </h1>
-        <p className="max-w-prose text-sm text-muted-foreground text-pretty">
-          Once the treasurer verifies payment, prepare the document and mark it
-          ready to claim.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Document requests
+          </h1>
+          <p className="max-w-prose text-sm text-muted-foreground text-pretty">
+            Once the treasurer verifies payment, prepare the document and mark
+            it ready to claim.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href={`/secretary/${id}/requests/new`}>
+            <UserPlus />
+            Walk-in request
+          </Link>
+        </Button>
       </header>
 
       <dl className="flex flex-col divide-y divide-border rounded-4xl border border-border bg-card p-1 sm:flex-row sm:divide-x sm:divide-y-0">

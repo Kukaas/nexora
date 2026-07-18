@@ -27,7 +27,12 @@ import {
   type RequestPage,
   type RequestStatusCounts,
 } from "@/lib/documents";
-import { formatPeso, MethodBadge, RequestStatusBadge } from "./secretary-ui";
+import {
+  formatPeso,
+  MethodBadge,
+  RequestStatusBadge,
+  WalkInBadge,
+} from "./secretary-ui";
 import {
   DateRangeFilter,
   dateBounds,
@@ -302,7 +307,10 @@ export function RequestsTable({
                           </Link>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {r.requesterName}
+                          <span className="inline-flex items-center gap-2">
+                            {r.requesterName}
+                            {r.walkIn && <WalkInBadge />}
+                          </span>
                         </TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">
                           {r.referenceNumber}
@@ -352,8 +360,9 @@ export function RequestsTable({
                           </span>
                           {paid && <MethodBadge method={r.method} />}
                         </div>
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                          {r.requesterName}
+                        <p className="mt-0.5 flex items-center gap-2 text-sm text-muted-foreground">
+                          <span className="truncate">{r.requesterName}</span>
+                          {r.walkIn && <WalkInBadge className="shrink-0" />}
                         </p>
                         <p className="mt-1 font-mono text-xs text-muted-foreground">
                           {r.referenceNumber}

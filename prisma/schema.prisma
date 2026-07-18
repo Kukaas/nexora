@@ -221,8 +221,10 @@ model DocumentRequest {
   note                             String?
   resubmitNote                     String?          @map("resubmit_note")
 
-  requesterId                      String           @map("requester_id")
-  requester                        User             @relation("DocumentRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  /// Null for a walk-in request the secretary encodes at the desk for a
+  /// resident without an account.
+  requesterId                      String?          @map("requester_id")
+  requester                        User?            @relation("DocumentRequester", fields: [requesterId], references: [id], onDelete: Cascade)
   requesterName                    String           @map("requester_name")
 
   reviewedById                     String?          @map("reviewed_by_id")

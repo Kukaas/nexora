@@ -5,6 +5,7 @@ import {
   Loader,
   PackageCheck,
   QrCode,
+  UserRound,
   XCircle,
 } from "lucide-react";
 
@@ -164,6 +165,22 @@ export function MethodBadge({
     >
       <Icon className="size-3.5 text-muted-foreground" aria-hidden />
       {METHOD_LABELS[method]}
+    </span>
+  );
+}
+
+/** Marks a request the secretary encoded at the desk for a resident without an
+    account — its payment is settled right here, in person. */
+export function WalkInBadge({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 w-fit items-center gap-1.5 rounded-3xl bg-violet-600/10 px-2.5 text-xs font-medium text-violet-700 dark:bg-violet-400/15 dark:text-violet-300",
+        className,
+      )}
+    >
+      <UserRound className="size-3.5" aria-hidden />
+      Walk-in
     </span>
   );
 }

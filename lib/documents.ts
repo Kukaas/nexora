@@ -99,6 +99,8 @@ export type DocumentRequestDTO = {
   resubmitNote: string | null;
   requesterName: string;
   requesterEmail: string | null;
+  /** True for a walk-in request the secretary encoded for a resident without an account. */
+  walkIn: boolean;
   reviewedByName: string | null;
   reviewedAt: string | null;
   releasedAt: string | null;

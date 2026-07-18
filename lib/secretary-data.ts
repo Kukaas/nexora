@@ -50,6 +50,7 @@ function toRequestDTO(row: RequestRow): DocumentRequestDTO {
     resubmitNote: row.resubmitNote,
     requesterName: row.requesterName,
     requesterEmail: row.requester?.email ?? null,
+    walkIn: row.requesterId === null,
     reviewedByName: personName(row.reviewedBy),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     releasedAt: row.releasedAt?.toISOString() ?? null,

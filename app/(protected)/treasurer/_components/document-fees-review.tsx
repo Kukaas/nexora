@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Inbox } from "lucide-react";
+import { ChevronRight, Inbox, Search, SearchX } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import {
   Empty,
   EmptyDescription,
@@ -33,6 +34,7 @@ import {
   formatPeso,
   MethodBadge,
   RequestStatusBadge,
+  WalkInBadge,
 } from "./treasurer-ui";
 
 type Filter = "ALL" | DocumentRequestStatus;
@@ -54,6 +56,9 @@ export function DocumentFeesReview({
   basePath: string;
 }) {
   const [filter, setFilter] = useState<Filter>(DocumentRequestStatus.PENDING);
+  // Lookup by the reference number a walk-in resident brings on their payment
+  // slip (or by name). Searching cuts across every status.
+  const [query, setQuery] = useState("");
 
   const counts = useMemo(() => {
     const base: Record<Filter, number> = {
@@ -68,13 +73,21 @@ export function DocumentFeesReview({
     return base;
   }, [requests]);
 
-  const visible = useMemo(
-    () =>
-      filter === "ALL"
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    // A reference search should find the request whatever tab is open, so the
+    // status filter only applies while the search box is empty.
+    const pool = needle
+      ? requests.filter(
+          (r) =>
+            r.referenceNumber.toLowerCase().includes(needle) ||
+            r.requesterName.toLowerCase().includes(needle),
+        )
+      : filter === "ALL"
         ? requests
-        : requests.filter((r) => r.status === filter),
-    [requests, filter],
-  );
+        : requests.filter((r) => r.status === filter);
+    return pool;
+  }, [requests, filter, query]);
 
   const pg = useClientPagination(visible, 10);
 
@@ -83,13 +96,35 @@ export function DocumentFeesReview({
     pg.setPage(1);
   };
 
+  const searching = query.trim().length > 0;
+
   return (
     <section aria-label="Document fees">
+      <div className="relative mb-3">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            pg.setPage(1);
+          }}
+          placeholder="Search by reference number or name…"
+          aria-label="Search document fees"
+          className="ps-10"
+        />
+      </div>
+
       {/* Filter tabs */}
       <div
         role="tablist"
         aria-label="Filter document fees by status"
-        className="flex w-full gap-1 overflow-x-auto rounded-3xl bg-muted p-1"
+        className={cn(
+          "flex w-full gap-1 overflow-x-auto rounded-3xl bg-muted p-1",
+          searching && "pointer-events-none opacity-50",
+        )}
       >
         {FILTERS.map((f) => {
           const active = filter === f.value;
@@ -124,7 +159,11 @@ export function DocumentFeesReview({
 
       {/* List */}
       {visible.length === 0 ? (
-        <EmptyFilterState filter={filter} />
+        searching ? (
+          <EmptySearchState query={query} />
+        ) : (
+          <EmptyFilterState filter={filter} />
+        )
       ) : (
         <>
           {/* Table — tablet and up */}
@@ -167,8 +206,14 @@ export function DocumentFeesReview({
                           aria-label={`${r.documentName} for ${r.requesterName}`}
                           className="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/30"
                         >
-                          {r.requesterName}
+                          <span className="inline-flex items-center gap-2">
+                            {r.requesterName}
+                            {r.walkIn && <WalkInBadge />}
+                          </span>
                         </Link>
+                        <p className="mt-0.5 font-mono text-xs font-normal text-muted-foreground">
+                          {r.referenceNumber}
+                        </p>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {r.documentName}
@@ -217,6 +262,7 @@ export function DocumentFeesReview({
                       <span className="truncate font-medium">
                         {r.requesterName}
                       </span>
+                      {r.walkIn && <WalkInBadge className="shrink-0" />}
                       {requestHasPayment(r) && (
                         <MethodBadge
                           method={r.method}
@@ -226,6 +272,9 @@ export function DocumentFeesReview({
                     </div>
                     <p className="mt-0.5 truncate text-sm text-muted-foreground">
                       {r.documentName}
+                    </p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                      {r.referenceNumber}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {formatDateTime(r.createdAt)}
@@ -262,6 +311,23 @@ export function DocumentFeesReview({
         </>
       )}
     </section>
+  );
+}
+
+function EmptySearchState({ query }: { query: string }) {
+  return (
+    <Empty className="mt-5 rounded-4xl border border-dashed border-border bg-card/50">
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <SearchX />
+        </EmptyMedia>
+        <EmptyTitle>No match for &ldquo;{query.trim()}&rdquo;</EmptyTitle>
+        <EmptyDescription>
+          Check the reference number on the slip — it looks like
+          BRGY-2026-12345 — or try the resident&apos;s name.
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
   );
 }
 

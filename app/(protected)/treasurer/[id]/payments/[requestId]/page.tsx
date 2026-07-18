@@ -10,6 +10,7 @@ import {
   formatPeso,
   MethodBadge,
   RequestStatusBadge,
+  WalkInBadge,
 } from "../../../_components/treasurer-ui";
 import { DocumentFeeActions } from "../../../_components/document-fee-actions";
 
@@ -28,6 +29,10 @@ export default async function TreasurerPaymentDetailPage({
 
   const backHref = `/treasurer/${id}/payments`;
   const hasPayment = requestHasPayment(request);
+  // A walk-in's method isn't real until the treasurer records it at
+  // verification, so don't show the placeholder CASH default before then.
+  const methodKnown =
+    hasPayment && !(request.walkIn && request.status === "PENDING");
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,8 +49,9 @@ export default async function TreasurerPaymentDetailPage({
           <h1 className="truncate text-2xl font-semibold tracking-tight">
             {request.requesterName}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
             {request.documentName}
+            {request.walkIn && <WalkInBadge />}
           </p>
         </div>
         <RequestStatusBadge status={request.status} className="mt-1 shrink-0" />
@@ -59,7 +65,7 @@ export default async function TreasurerPaymentDetailPage({
               <span className="font-mono text-3xl font-semibold tabular-nums">
                 {hasPayment ? formatPeso(request.fee) : "Free"}
               </span>
-              {hasPayment && <MethodBadge method={request.method} />}
+              {methodKnown && <MethodBadge method={request.method} />}
             </div>
 
             <dl className="flex flex-col gap-2.5 text-sm">
@@ -84,6 +90,7 @@ export default async function TreasurerPaymentDetailPage({
                 backHref={backHref}
                 verifyLabel={hasPayment ? "Verify payment" : "Approve request"}
                 requiresOr={hasPayment}
+                walkIn={request.walkIn}
               />
             </div>
           </div>
@@ -102,6 +109,9 @@ export default async function TreasurerPaymentDetailPage({
               </Row>
               {request.requesterEmail && (
                 <Row label="Resident">{request.requesterEmail}</Row>
+              )}
+              {request.walkIn && (
+                <Row label="Resident">Walk-in — no portal account</Row>
               )}
               {request.purpose && <Row label="Purpose">{request.purpose}</Row>}
               {request.fieldValues.map((field, i) => (
@@ -158,7 +168,9 @@ export default async function TreasurerPaymentDetailPage({
                 </a>
               ) : (
                 <p className="rounded-3xl bg-muted px-4 py-3 text-sm text-muted-foreground">
-                  No screenshot attached. This is being paid in cash at the hall.
+                  {request.walkIn
+                    ? "Walk-in request — collect the payment at the desk (cash or e-wallet) and record it when you verify."
+                    : "No screenshot attached. This is being paid in cash at the hall."}
                 </p>
               )}
             </section>

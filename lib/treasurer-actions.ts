@@ -86,6 +86,11 @@ const reviewDocumentSchema = z.object({
   note: z.string().trim().max(500).optional(),
   // The Official Receipt number, recorded when verifying a paid request.
   orNumber: z.string().trim().max(80).optional(),
+  // Walk-in only: how the resident actually paid at the desk. A walk-in is
+  // created by the secretary with no payment attached, so the treasurer records
+  // the method (and an e-wallet reference, if any) at verification time.
+  method: z.enum(["GCASH", "MAYA", "CASH"]).optional(),
+  paymentReference: z.string().trim().max(80).optional(),
 });
 
 /**
@@ -113,7 +118,7 @@ export async function reviewDocumentRequest(
 
   const existing = await prisma.documentRequest.findUnique({
     where: { id: requestId },
-    select: { id: true, fee: true },
+    select: { id: true, fee: true, requesterId: true },
   });
   if (!existing) return { ok: false, error: "That request no longer exists." };
 
@@ -124,19 +129,50 @@ export async function reviewDocumentRequest(
     return { ok: false, error: "Enter the OR number to verify this payment." };
   }
 
+  // Only a walk-in's payment record is the treasurer's to write; a resident's
+  // own submission already carries the method and proof they chose.
+  const walkIn = existing.requesterId === null;
+  // A walk-in is settled in person at the desk; there's no resident portal to
+  // send it back to, so it can only ever be verified.
+  if (walkIn && decision === "REJECTED") {
+    return {
+      ok: false,
+      error: "A walk-in is settled at the desk — verify it instead of sending it back.",
+    };
+  }
+  const method =
+    walkIn && decision === "VERIFIED" && isPaid && parsed.data.method
+      ? (parsed.data.method as PaymentMethodType)
+      : null;
+
+  // A walk-in resident is already at the desk, so verifying it hands the
+  // document straight to READY for the secretary to print and release —
+  // skipping the "to prepare" (PROCESSING) queue an online request waits in.
+  const verifiedStatus = walkIn
+    ? DocumentRequestStatus.READY
+    : DocumentRequestStatus.PROCESSING;
+
   await prisma.documentRequest.update({
     where: { id: requestId },
     data: {
       status:
-        decision === "VERIFIED"
-          ? DocumentRequestStatus.PROCESSING
-          : DocumentRequestStatus.REJECTED,
+        decision === "VERIFIED" ? verifiedStatus : DocumentRequestStatus.REJECTED,
       note: decision === "REJECTED" ? note : null,
       orNumber: decision === "VERIFIED" ? (orNumber ?? null) : null,
+      ...(method
+        ? {
+            method,
+            paymentReference:
+              method === PaymentMethodType.CASH
+                ? null
+                : parsed.data.paymentReference || null,
+          }
+        : {}),
       reviewedById: auth.userId,
       reviewedAt: new Date(),
-      // Clear any prior release stamp if a READY request is sent back.
-      releasedAt: null,
+      // Stamp the release when a walk-in goes straight to READY; otherwise clear
+      // any prior stamp (e.g. a READY request being sent back).
+      releasedAt: decision === "VERIFIED" && walkIn ? new Date() : null,
     },
   });
 

@@ -32,8 +32,14 @@ export default async function PrintRequestPage({
   const request = await getDocumentRequestById(requestId);
   if (!request) notFound();
 
-  // Printing is available only after the secretary has marked the request ready.
-  if (request.status !== DocumentRequestStatus.READY) notFound();
+  // Printing opens once the request is ready, and stays open after it's claimed
+  // so the secretary can reprint if a copy was misprinted or lost.
+  if (
+    request.status !== DocumentRequestStatus.READY &&
+    request.status !== DocumentRequestStatus.CLAIMED
+  ) {
+    notFound();
+  }
 
   const backHref = `/secretary/${id}/requests/${requestId}`;
   const type = request.documentTypeId
