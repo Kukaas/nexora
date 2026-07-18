@@ -50,7 +50,14 @@ export default async function AuthLayout({
           href="/"
           className="relative z-10 flex w-fit items-center gap-3 rounded-3xl outline-none focus-visible:ring-3 focus-visible:ring-primary/40"
         >
-          <NexoraMark wordClassName="text-2xl" />
+          {/* The lockup's wordmark is dark ink, so on this dark panel the
+              emblem pairs with light text instead. */}
+          <span className="inline-flex items-center gap-2.5">
+            <NexoraGlyph className="size-9" />
+            <span className="text-2xl font-semibold tracking-tight">
+              Nexora
+            </span>
+          </span>
           <span aria-hidden className="h-6 w-px bg-white/15" />
           <span className="text-sm leading-tight text-[oklch(0.78_0.012_80)]">
             for Barangay

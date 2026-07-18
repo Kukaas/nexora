@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { APIError } from "better-auth/api";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
@@ -71,6 +72,133 @@ export async function registerResident(
     console.error("registerResident failed", error);
     return { ok: false, error: "Something went wrong. Please try again." };
   }
+}
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Enter your temporary password."),
+  newPassword: z
+    .string()
+    .min(8, "New password must be at least 8 characters.")
+    .max(128, "That password is too long."),
+});
+
+export type ChangePasswordResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * First-login password change for an admin-created official. They sign in with
+ * the temporary password from their welcome email, then land here (via the
+ * /start gate) to set their own. We verify the temporary password through Better
+ * Auth's changePassword, then clear `mustChangePassword` so the gate opens.
+ */
+export async function changeInitialPassword(
+  input: z.infer<typeof changePasswordSchema>,
+): Promise<ChangePasswordResult> {
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
+  if (!session) {
+    return { ok: false, error: "Your session expired. Sign in again." };
+  }
+
+  const parsed = changePasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Check your details and try again.",
+    };
+  }
+
+  try {
+    await auth.api.changePassword({
+      body: {
+        currentPassword: parsed.data.currentPassword,
+        newPassword: parsed.data.newPassword,
+        // Keep this session alive; sign out other devices that used the temp one.
+        revokeOtherSessions: true,
+      },
+      headers: requestHeaders,
+    });
+  } catch (error) {
+    if (error instanceof APIError) {
+      // Most commonly the temporary password was typed wrong.
+      return {
+        ok: false,
+        error:
+          "That temporary password didn't match. Use the one from your welcome email.",
+      };
+    }
+    console.error("changeInitialPassword failed", error);
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { mustChangePassword: false },
+  });
+
+  return { ok: true };
+}
+
+const accountPasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Enter your current password."),
+  newPassword: z
+    .string()
+    .min(8, "New password must be at least 8 characters.")
+    .max(128, "That password is too long."),
+});
+
+/**
+ * Let a resident who signs in with email + password change it from their
+ * profile. Better Auth verifies the current password before setting the new
+ * one. A Google-only account has no password, so the profile page never shows
+ * this option; if it's somehow called for one, changePassword throws and we
+ * surface a plain error.
+ */
+export async function changeAccountPassword(
+  input: z.infer<typeof accountPasswordSchema>,
+): Promise<ChangePasswordResult> {
+  const requestHeaders = await headers();
+  const session = await auth.api.getSession({ headers: requestHeaders });
+  if (!session) {
+    return { ok: false, error: "Your session expired. Sign in again." };
+  }
+
+  const parsed = accountPasswordSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Check your details and try again.",
+    };
+  }
+
+  if (parsed.data.currentPassword === parsed.data.newPassword) {
+    return {
+      ok: false,
+      error: "Choose a password different from your current one.",
+    };
+  }
+
+  try {
+    await auth.api.changePassword({
+      body: {
+        currentPassword: parsed.data.currentPassword,
+        newPassword: parsed.data.newPassword,
+        // Keep this device signed in; boot any others for safety.
+        revokeOtherSessions: true,
+      },
+      headers: requestHeaders,
+    });
+  } catch (error) {
+    if (error instanceof APIError) {
+      return {
+        ok: false,
+        error: "That current password didn't match. Please try again.",
+      };
+    }
+    console.error("changeAccountPassword failed", error);
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+
+  return { ok: true };
 }
 
 /**

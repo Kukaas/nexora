@@ -1,16 +1,12 @@
-import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { RoleDashboard } from "../_components/role-dashboard";
+import { requireSession } from "@/lib/session";
 
-export const metadata: Metadata = {
-  title: "Kagawad · Barangay Libtangin",
-};
-
-export default function KagawadPage() {
-  return (
-    <RoleDashboard
-      title="Kagawad dashboard"
-      description="Review complaints, assist residents, and support council work."
-    />
-  );
+/**
+ * Bare `/kagawad` forwards to the kagawad's own id-scoped home
+ * (`/kagawad/{userId}`), where the console lives. Mirrors `/secretary`.
+ */
+export default async function KagawadIndex() {
+  const session = await requireSession();
+  redirect(`/kagawad/${session.user.id}`);
 }

@@ -13,42 +13,57 @@ datasource db {
 }
 
 model User {
-  id                      String            @id @default(uuid())
-  // Collected during the post-registration resident setup, not at sign-up.
-  name                    String?           @map("name")
-  firstName               String?           @map("first_name")
-  middleName              String?           @map("middle_name")
-  lastName                String?           @map("last_name")
-  email                   String
-  image                   String?           
+  id                              String            @id @default(uuid())
+  name                            String?           @map("name")
+  firstName                       String?           @map("first_name")
+  middleName                      String?           @map("middle_name")
+  lastName                        String?           @map("last_name")
+  email                           String
+  image                           String?
+  birthDate                       DateTime?         @map("birth_date")
+  mobileNumber                    String?           @map("mobile_number")
+  purok                           Purok?            @map("purok")
+  profileCompletedAt              DateTime?         @map("profile_completed_at")
+  mustChangePassword              Boolean           @default(false) @map("must_change_password")
 
-  emailVerified           Boolean           @default(false) @map("email_verified")
-  createdAt               DateTime          @default(now()) @map("created_at")
-  updatedAt               DateTime          @updatedAt @map("updated_at")
+  emailVerified                   Boolean           @default(false) @map("email_verified")
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
 
+  sessions                        Session[]
+  accounts                        Account[]
+  roles                           UserRoles[]       @default([RESIDENT]) @map("roles")
+  ids                             ID[]
 
-  sessions                Session[]
-  accounts                Account[]
-  roles                   UserRoles[]       @default([RESIDENT]) @map("roles")
-  ids                     ID[]
+  payments                        Payment[]         @relation("PaymentPayer")
+  reviewedPayments                Payment[]         @relation("PaymentReviewer")
+  updatedPaymentMethods           PaymentMethod[]   @relation("PaymentMethodEditor")
+
+  documentRequests                DocumentRequest[] @relation("DocumentRequester")
+  reviewedDocumentRequests        DocumentRequest[] @relation("DocumentReviewer")
+  updatedDocumentTypes            DocumentType[]    @relation("DocumentTypeEditor")
+  announcements                   Announcement[]    @relation("AnnouncementAuthor")
+
+  conversation                    Conversation?     @relation("ConversationResident")
+  sentMessages                    Message[]         @relation("MessageSender")
 
   @@unique([email])
   @@map("user")
 }
 
 model Session {
-  id                      String            @id @default(uuid())
-  token                   String
-  ipAddress               String?           @map("ip_address")
-  userAgent               String?           @map("user_agent")
+  id                              String            @id @default(uuid())
+  token                           String
+  ipAddress                       String?           @map("ip_address")
+  userAgent                       String?           @map("user_agent")
 
-  userId                  String            @map("user_id")
+  userId                          String            @map("user_id")
 
-  user                    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  expiresAt               DateTime          @map("expires_at")
-  createdAt               DateTime          @default(now()) @map("created_at")
-  updatedAt               DateTime          @updatedAt @map("updated_at")
+  expiresAt                       DateTime          @map("expires_at")
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
 
   @@unique([token])
   @@index([userId])
@@ -56,58 +71,286 @@ model Session {
 }
 
 model Account {
-  id                       String            @id @default(uuid())
-  scope                    String?           @map("scope")
-  password                 String?           @map("password")
-  accessToken              String?           @map("access_token")
-  refreshToken             String?           @map("refresh_token")
-  idToken                  String?           @map("id_token")
+  id                              String            @id @default(uuid())
+  scope                           String?           @map("scope")
+  password                        String?           @map("password")
+  accessToken                     String?           @map("access_token")
+  refreshToken                    String?           @map("refresh_token")
+  idToken                         String?           @map("id_token")
 
-  accountId                String            @map("account_id")
-  providerId               String            @map("provider_id")
-  userId                   String            @map("user_id")
+  accountId                       String            @map("account_id")
+  providerId                      String            @map("provider_id")
+  userId                          String            @map("user_id")
 
-  user                     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  accessTokenExpiresAt     DateTime?         @map("access_token_expires_at")
-  refreshTokenExpiresAt    DateTime?         @map("refresh_token_expires_at")
-  createdAt                DateTime          @default(now()) @map("created_at")
-  updatedAt                DateTime          @updatedAt @map("updated_at")
+  accessTokenExpiresAt            DateTime?         @map("access_token_expires_at")
+  refreshTokenExpiresAt           DateTime?         @map("refresh_token_expires_at")
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
 
   @@index([userId])
   @@map("account")
 }
 
 model Verification {
-  id                        String            @id @default(uuid())
-  identifier                String
-  value                     String
+  id                              String            @id @default(uuid())
+  identifier                      String
+  value                           String
 
-  expiresAt                 DateTime          @map("expires_at")
-  createdAt                 DateTime          @default(now()) @map("created_at")
-  updatedAt                 DateTime          @updatedAt @map("updated_at")
+  expiresAt                       DateTime          @map("expires_at")
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
 
   @@index([identifier])
   @@map("verification")
 }
 
 model ID {
-  id                        String            @id @default(uuid())
-  type                      IDType
-  number                    String
-  image                     String
+  id                              String            @id @default(uuid())
+  type                            IDType
+  number                          String
+  frontImage                      String            @map("front_image")
+  backImage                       String?           @map("back_image")
+  status                          IDStatus          @default(PENDING)
+  reviewedAt                      DateTime?         @map("reviewed_at")
 
-  userId                    String            @map("user_id")
-  user                      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                          String            @map("user_id")
+  user                            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt                 DateTime          @default(now()) @map("created_at")
-  updatedAt                 DateTime          @updatedAt @map("updated_at")
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
 
-  @@index([userId])
   @@unique([type, number])
+  @@index([userId])
   @@map("id")
 }
 
+model PaymentMethod {
+  id                              String            @id @default(uuid())
+  type                            PaymentMethodType
+  enabled                         Boolean           @default(false)
+
+  accountName                     String?           @map("account_name")
+  accountNumber                   String?           @map("account_number")
+  qrImage                         String?           @map("qr_image")
+
+  instructions                    String?
+
+  updatedById                     String?           @map("updated_by_id")
+  updatedBy                       User?             @relation("PaymentMethodEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
+
+  @@unique([type])
+  @@map("payment_method")
+}
+
+model Payment {
+  id                              String            @id @default(uuid())
+  purpose                         String
+  amount                          Decimal           @db.Decimal(10, 2)
+  method                          PaymentMethodType
+  referenceNumber                 String?           @map("reference_number")
+  proofImage                      String?           @map("proof_image")
+
+  status                          PaymentStatus     @default(PENDING)
+  reviewNote                      String?           @map("review_note")
+
+  payerId                         String            @map("payer_id")
+  payer                           User              @relation("PaymentPayer", fields: [payerId], references: [id], onDelete: Cascade)
+  payerName                       String            @map("payer_name")
+
+  reviewedById                    String?           @map("reviewed_by_id")
+  reviewedBy                      User?             @relation("PaymentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt                      DateTime?         @map("reviewed_at")
+
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([payerId])
+  @@map("payment")
+}
+
+model DocumentType {
+  id                               String           @id @default(uuid())
+  name                             String
+  description                      String?
+  fee                              Decimal          @db.Decimal(10, 2)
+  turnaroundDays                   Int              @default(2) @map("turnaround_days")
+  active                           Boolean          @default(true)
+
+  fields                           Json             @default("[]")
+  template                         String?          @db.Text
+  paperSize                        String           @default("A4") @map("paper_size")
+  orientation                      String           @default("portrait")
+
+  requests                         DocumentRequest[]
+
+  updatedById                      String?          @map("updated_by_id")
+  updatedBy                        User?            @relation("DocumentTypeEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
+
+  @@unique([name])
+  @@map("document_type")
+}
+
+model DocumentRequest {
+  id                               String           @id @default(uuid())
+  referenceNumber                  String           @map("reference_number")
+
+  documentTypeId                   String?          @map("document_type_id")
+  documentType                     DocumentType?    @relation(fields: [documentTypeId], references: [id], onDelete: SetNull)
+  documentName                     String           @map("document_name")
+  fee                              Decimal          @db.Decimal(10, 2)
+
+  fieldValues                      Json             @default("[]") @map("field_values")
+
+  purpose                          String?
+
+  method                           PaymentMethodType
+  paymentReference                 String?          @map("payment_reference")
+  proofImage                       String?          @map("proof_image")
+  orNumber                         String?          @map("or_number")
+
+  status                           DocumentRequestStatus @default(PENDING)
+  note                             String?
+  resubmitNote                     String?          @map("resubmit_note")
+
+  /// Null for a walk-in request the secretary encodes at the desk for a
+  /// resident without an account.
+  requesterId                      String?          @map("requester_id")
+  requester                        User?            @relation("DocumentRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterName                    String           @map("requester_name")
+
+  reviewedById                     String?          @map("reviewed_by_id")
+  reviewedBy                       User?            @relation("DocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt                       DateTime?        @map("reviewed_at")
+  releasedAt                       DateTime?        @map("released_at")
+
+  createdAt                        DateTime         @default(now()) @map("created_at")
+  updatedAt                        DateTime         @updatedAt @map("updated_at")
+
+  @@unique([referenceNumber])
+  @@index([status])
+  @@index([requesterId])
+  @@map("document_request")
+}
+
+model MediaAsset {
+  id                               String            @id @default(uuid())
+  url                              String
+  name                             String
+  createdById                      String?           @map("created_by_id")
+  createdAt                        DateTime          @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("media_asset")
+}
+
+model Announcement {
+  id                               String            @id @default(uuid())
+  title                            String
+  body                             String
+  category                         AnnouncementCategory  @default(ADVISORY)
+  pinned                           Boolean           @default(false)
+  published                        Boolean           @default(true)
+  place                            String?
+  latitude                         Float?            @map("latitude")
+  longitude                        Float?            @map("longitude")
+  date                             DateTime?         @map("date")
+  startTime                        String?           @map("start_time")
+  endTime                          String?           @map("end_time")
+  imageUrl                         String?           @map("image_url")
+  /// The purok this notice targets; null means barangay-wide.
+  purok                            Purok?            @map("purok")
+
+  authorId                         String?           @map("author_id")
+  author                           User?             @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  createdAt                        DateTime          @default(now()) @map("created_at")
+  updatedAt                        DateTime          @updatedAt @map("updated_at")
+
+  @@index([published, pinned])
+  @@index([purok])
+  @@map("announcement")
+}
+
+/// The barangay message desk. One conversation per resident; any official can
+/// read and reply. Read timestamps drive the unread indicators on each side.
+model Conversation {
+  id                               String            @id @default(uuid())
+  residentId                       String            @unique @map("resident_id")
+  resident                         User              @relation("ConversationResident", fields: [residentId], references: [id], onDelete: Cascade)
+
+  messages                         Message[]
+
+  lastMessageAt                    DateTime          @default(now()) @map("last_message_at")
+  residentReadAt                   DateTime?         @map("resident_read_at")
+  officialReadAt                   DateTime?         @map("official_read_at")
+
+  createdAt                        DateTime          @default(now()) @map("created_at")
+  updatedAt                        DateTime          @updatedAt @map("updated_at")
+
+  @@index([lastMessageAt])
+  @@map("conversation")
+}
+
+model Message {
+  id                               String            @id @default(uuid())
+  conversationId                   String            @map("conversation_id")
+  conversation                     Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId                         String            @map("sender_id")
+  sender                           User              @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  kind                             MessageKind       @default(TEXT)
+  body                             String?
+  attachmentUrl                    String?           @map("attachment_url")
+  attachmentName                   String?           @map("attachment_name")
+  attachmentSize                   Int?              @map("attachment_size")
+
+  createdAt                        DateTime          @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("message")
+}
+
+enum MessageKind {
+  TEXT
+  IMAGE
+  FILE
+}
+
+enum DocumentRequestStatus {
+  PENDING
+  PROCESSING
+  READY
+  CLAIMED
+  REJECTED
+}
+
+enum AnnouncementCategory {
+  ADVISORY
+  HEALTH
+  EVENTS
+  ASSISTANCE
+  GOVERNANCE
+}
+
+enum Purok {
+  PUROK_1
+  PUROK_2
+  PUROK_3
+  PUROK_4
+  PUROK_5
+  PUROK_6
+  PUROK_7
+}
 
 enum UserRoles {
   ADMIN
@@ -125,4 +368,22 @@ enum IDType {
   GSIS
   PRC
   OTHERS
+}
+
+enum IDStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentMethodType {
+  GCASH
+  MAYA
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
 }
