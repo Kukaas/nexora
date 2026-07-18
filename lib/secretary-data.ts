@@ -2,7 +2,7 @@ import "server-only";
 
 import { Prisma } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
+import { DocumentRequestStatus, type Purok } from "@/app/generated/prisma/enums";
 import {
   parseDocumentFields,
   parseDocumentFieldValues,
@@ -243,8 +243,16 @@ export async function getAnnouncementById(
   return row ? toAnnouncementDTO(row) : null;
 }
 
-export async function getAnnouncements(): Promise<AnnouncementDTO[]> {
+/**
+ * Every announcement for a management list, pinned first then newest. Pass
+ * `purok` to scope the list to one purok's notices (the kagawad console);
+ * without it the secretary sees everything, barangay-wide and per-purok alike.
+ */
+export async function getAnnouncements(opts: {
+  purok?: Purok;
+} = {}): Promise<AnnouncementDTO[]> {
   const rows = await prisma.announcement.findMany({
+    where: opts.purok ? { purok: opts.purok } : undefined,
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     include: {
       author: { select: { name: true, firstName: true, lastName: true } },
@@ -268,6 +276,7 @@ export function toAnnouncementDTO(row: {
   startTime: string | null;
   endTime: string | null;
   imageUrl: string | null;
+  purok: Purok | null;
   createdAt: Date;
   author: { name: string | null; firstName: string | null; lastName: string | null } | null;
 }): AnnouncementDTO {
@@ -285,6 +294,7 @@ export function toAnnouncementDTO(row: {
     startTime: row.startTime,
     endTime: row.endTime,
     imageUrl: row.imageUrl,
+    purok: row.purok,
     authorName: personName(row.author),
     createdAt: row.createdAt.toISOString(),
   };

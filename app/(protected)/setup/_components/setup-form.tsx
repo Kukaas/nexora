@@ -10,6 +10,7 @@ import { AlertCircle, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { completeResidentSetup, type SetupInput } from "@/lib/resident-actions";
+import { PUROK_LABELS, PUROK_ORDER } from "@/lib/purok";
 import { cn } from "@/lib/utils";
 import { IdPhotoUpload } from "@/components/id-photo-upload";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const ID_TYPES = [
 const PH_MOBILE = /^(09\d{9}|\+?639\d{8})$/;
 
 const setupSchema = z.object({
+  purok: z.string().min(1, "Choose your purok."),
   firstName: z.string().trim().min(1, "Enter your first name."),
   middleName: z.string().trim().optional(),
   lastName: z.string().trim().min(1, "Enter your last name."),
@@ -80,6 +82,7 @@ export function SetupForm({ email }: { email: string }) {
     lastName: useId(),
     birthDate: useId(),
     mobile: useId(),
+    purok: useId(),
     idType: useId(),
     idNumber: useId(),
   };
@@ -104,6 +107,7 @@ export function SetupForm({ email }: { email: string }) {
       lastName: "",
       birthDate: undefined,
       mobileNumber: "",
+      purok: "",
       idType: "",
       idNumber: "",
       idFront: "",
@@ -124,6 +128,7 @@ export function SetupForm({ email }: { email: string }) {
       ...values,
       birthDate: format(values.birthDate, "yyyy-MM-dd"),
       idType: values.idType as SetupInput["idType"],
+      purok: values.purok as SetupInput["purok"],
     };
     const result = await completeResidentSetup(payload);
     if (!result.ok) {
@@ -267,6 +272,43 @@ export function SetupForm({ email }: { email: string }) {
               />
               {errors.birthDate && (
                 <FieldError>{errors.birthDate.message}</FieldError>
+              )}
+            </Field>
+
+            <Field data-invalid={!!errors.purok}>
+              <FieldLabel htmlFor={ids.purok}>Purok</FieldLabel>
+              <Controller
+                control={control}
+                name="purok"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger
+                      id={ids.purok}
+                      className="w-full"
+                      aria-invalid={!!errors.purok}
+                    >
+                      <SelectValue placeholder="Select your purok" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PUROK_ORDER.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {PUROK_LABELS[p]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.purok ? (
+                <FieldError>{errors.purok.message}</FieldError>
+              ) : (
+                <FieldDescription>
+                  The purok where you live in Barangay Libtangin.
+                </FieldDescription>
               )}
             </Field>
 

@@ -248,12 +248,19 @@ export function RequestForm({
   }
 
   const actions = (
-    <div className="flex gap-2">
-      <Button variant="outline" className="flex-1" size="lg" asChild>
+    // Full-width split buttons on phones; compact and right-aligned on wider
+    // screens so they don't stretch across the whole column.
+    <div className="flex gap-2 sm:justify-end">
+      <Button
+        variant="outline"
+        className="flex-1 sm:flex-none sm:px-6"
+        size="lg"
+        asChild
+      >
         <Link href={backHref}>Cancel</Link>
       </Button>
       <Button
-        className="flex-1"
+        className="flex-1 sm:flex-none sm:px-8"
         size="lg"
         onClick={submit}
         disabled={submitting || noChannels}
@@ -299,32 +306,36 @@ export function RequestForm({
         </div>
       )}
 
-      {type.fields.length > 0 && (
-        <div className="mt-5 flex flex-col gap-4">
-          {type.fields.map((field) => (
+      {/* Two columns of inputs on wider screens so a full-width card doesn't
+          stretch every field edge to edge; long-text fields keep the full row. */}
+      <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
+        {type.fields.map((field) => (
+          <div
+            key={field.id}
+            className={cn(field.type === "textarea" && "sm:col-span-2")}
+          >
             <FieldInput
-              key={field.id}
               field={field}
               value={answers[field.id] ?? ""}
               onChange={(value) => setAnswer(field.id, value)}
               disabled={submitting}
             />
-          ))}
-        </div>
-      )}
+          </div>
+        ))}
 
-      <div className="mt-5 flex flex-col gap-2">
-        <Label htmlFor={purposeId}>
-          What&apos;s it for?{" "}
-          <span className="font-normal text-muted-foreground">(optional)</span>
-        </Label>
-        <Input
-          id={purposeId}
-          value={purpose}
-          onChange={(e) => setPurpose(e.target.value)}
-          placeholder="e.g. for employment"
-          disabled={submitting}
-        />
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={purposeId}>
+            What&apos;s it for?{" "}
+            <span className="font-normal text-muted-foreground">(optional)</span>
+          </Label>
+          <Input
+            id={purposeId}
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            placeholder="e.g. for employment"
+            disabled={submitting}
+          />
+        </div>
       </div>
 
       {noChannels && (
@@ -337,7 +348,7 @@ export function RequestForm({
   );
 
   return (
-    <div className="mx-auto w-full max-w-xl lg:max-w-5xl">
+    <div className="w-full">
       <Link
         href={backHref}
         className="inline-flex items-center gap-1.5 rounded-2xl text-sm font-medium text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/30"
@@ -384,7 +395,7 @@ export function RequestForm({
           {actions}
         </div>
       ) : (
-        <div className="mt-6 grid gap-x-6 gap-y-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+        <div className="mt-6 grid gap-x-6 gap-y-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start xl:grid-cols-[minmax(0,1fr)_26rem] xl:gap-x-8">
           {detailsCard}
 
           <div className="lg:col-start-1 lg:row-start-2">
@@ -392,7 +403,7 @@ export function RequestForm({
             <div
               role="radiogroup"
               aria-label="Payment method"
-              className="grid grid-cols-3 gap-2"
+              className="grid max-w-md grid-cols-3 gap-2"
             >
               {methods.map((m) => {
                 const Icon = METHOD_ICON[m.type];
@@ -434,9 +445,10 @@ export function RequestForm({
             )}
           </aside>
 
-          {/* Proof inputs — left column, after the QR in source order. */}
+          {/* Proof inputs — left column, after the QR in source order. Side by
+              side on wide screens so neither input spans the whole column. */}
           {isEwallet && (
-            <div className="space-y-5 lg:col-start-1 lg:row-start-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:col-start-1 lg:row-start-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor={refId}>Reference number</Label>
                 <Input

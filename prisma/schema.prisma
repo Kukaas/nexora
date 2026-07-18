@@ -22,6 +22,7 @@ model User {
   image                           String?
   birthDate                       DateTime?         @map("birth_date")
   mobileNumber                    String?           @map("mobile_number")
+  purok                           Purok?            @map("purok")
   profileCompletedAt              DateTime?         @map("profile_completed_at")
   mustChangePassword              Boolean           @default(false) @map("must_change_password")
 
@@ -263,6 +264,8 @@ model Announcement {
   startTime                        String?           @map("start_time")
   endTime                          String?           @map("end_time")
   imageUrl                         String?           @map("image_url")
+  /// The purok this notice targets; null means barangay-wide.
+  purok                            Purok?            @map("purok")
 
   authorId                         String?           @map("author_id")
   author                           User?             @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
@@ -271,6 +274,7 @@ model Announcement {
   updatedAt                        DateTime          @updatedAt @map("updated_at")
 
   @@index([published, pinned])
+  @@index([purok])
   @@map("announcement")
 }
 
@@ -334,6 +338,16 @@ enum AnnouncementCategory {
   EVENTS
   ASSISTANCE
   GOVERNANCE
+}
+
+enum Purok {
+  PUROK_1
+  PUROK_2
+  PUROK_3
+  PUROK_4
+  PUROK_5
+  PUROK_6
+  PUROK_7
 }
 
 enum UserRoles {

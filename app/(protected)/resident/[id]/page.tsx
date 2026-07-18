@@ -25,6 +25,7 @@ import { getResidencyStatus, type ResidencyStatus } from "@/lib/profile";
 import {
   getMyDocumentRequests,
   getPublishedAnnouncementsPage,
+  getUserPurok,
 } from "@/lib/documents-data";
 import Link from "next/link";
 
@@ -63,10 +64,12 @@ export default async function ResidentPage({
   // Verified residents get the live request tools and their own request list;
   // everyone sees the published announcements. Unverified residents skip the
   // request-only queries since they can't transact yet.
+  // The feed shows barangay-wide notices plus the resident's own purok's.
+  const purok = await getUserPurok(session.user.id);
   const [myRequests, announcements] = await Promise.all([
     verified ? getMyDocumentRequests(session.user.id) : Promise.resolve([]),
     // Just a preview on the dashboard; the full, paginated list is its own page.
-    getPublishedAnnouncementsPage({ take: 4 }),
+    getPublishedAnnouncementsPage({ take: 4, forPurok: purok }),
   ]);
 
   return (

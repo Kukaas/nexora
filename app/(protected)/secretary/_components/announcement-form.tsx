@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { AnnouncementCategory } from "@/app/generated/prisma/enums";
+import { AnnouncementCategory, type Purok } from "@/app/generated/prisma/enums";
 import {
   BARANGAY,
   CATEGORY_LABELS,
@@ -47,6 +47,7 @@ import {
   type AnnouncementDTO,
   type LibtanginVenue,
 } from "@/lib/documents";
+import { PUROK_LABELS, PUROK_ORDER, purokLabel } from "@/lib/purok";
 import { deleteAnnouncement, saveAnnouncement } from "@/lib/secretary-actions";
 import {
   LibtanginMapPicker,
@@ -62,16 +63,22 @@ function isoToDate(iso: string | null): Date | undefined {
 }
 
 /**
- * The secretary's new/edit announcement form, rendered full-width as its own
- * page (the list links here rather than opening a sheet). `editing` is null in
- * create mode. On success it returns to `backHref` — the announcements list.
+ * The new/edit announcement form, rendered full-width as its own page (the
+ * list links here rather than opening a sheet). `editing` is null in create
+ * mode. On success it returns to `backHref` — the announcements list.
+ *
+ * Shared by the secretary and kagawad consoles. The secretary picks the
+ * audience (barangay-wide or a purok); a kagawad passes `fixedPurok` and the
+ * notice is locked to their assigned purok (the server enforces this too).
  */
 export function AnnouncementForm({
   editing,
   backHref,
+  fixedPurok,
 }: {
   editing: AnnouncementDTO | null;
   backHref: string;
+  fixedPurok?: Purok;
 }) {
   const router = useRouter();
   const titleId = useId();
@@ -101,6 +108,10 @@ export function AnnouncementForm({
   const [endTime, setEndTime] = useState(editing?.endTime ?? "");
   const [imageUrl, setImageUrl] = useState<string | undefined>(
     editing?.imageUrl ?? undefined,
+  );
+  // "" = barangay-wide. Ignored when `fixedPurok` locks the audience.
+  const [purok, setPurok] = useState<Purok | "">(
+    fixedPurok ?? editing?.purok ?? "",
   );
   const [pinned, setPinned] = useState(editing?.pinned ?? false);
   const [published, setPublished] = useState(editing?.published ?? true);
@@ -146,6 +157,7 @@ export function AnnouncementForm({
       startTime: startTime || undefined,
       endTime: endTime || undefined,
       imageUrl,
+      purok: (fixedPurok ?? purok) || undefined,
       pinned,
       published,
     });
@@ -255,6 +267,50 @@ export function AnnouncementForm({
 
         {/* Settings */}
         <div className="flex flex-col gap-5 rounded-4xl border border-border bg-card p-5 sm:p-6">
+          <div className="flex flex-col gap-2">
+            <Label>Audience</Label>
+            {fixedPurok ? (
+              <>
+                <div className="flex h-9 items-center rounded-3xl bg-muted px-3 text-sm font-medium text-foreground">
+                  {PUROK_LABELS[fixedPurok]}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  As kagawad of {PUROK_LABELS[fixedPurok]}, your notices go to
+                  its residents (alongside barangay-wide news).
+                </p>
+              </>
+            ) : (
+              <>
+                <Select
+                  value={purok || "BARANGAY"}
+                  onValueChange={(v) =>
+                    setPurok(v === "BARANGAY" ? "" : (v as Purok))
+                  }
+                  disabled={busy}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="BARANGAY">
+                      Barangay-wide (everyone)
+                    </SelectItem>
+                    {PUROK_ORDER.map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {PUROK_LABELS[p]} only
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {purok
+                    ? `Only ${purokLabel(purok)} residents see this in their feed.`
+                    : "Every resident sees this in their feed."}
+                </p>
+              </>
+            )}
+          </div>
+
           <div className="flex flex-col gap-2">
             <Label>Category</Label>
             <Select

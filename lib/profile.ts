@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
-import { IDStatus, type IDType } from "@/app/generated/prisma/enums";
+import { IDStatus, type IDType, type Purok } from "@/app/generated/prisma/enums";
 
 /**
  * Whether the resident has finished the setup/verification step. Read straight
@@ -100,6 +100,7 @@ export type ResidentProfile = {
   image: string | null;
   birthDate: string | null;
   mobileNumber: string | null;
+  purok: Purok | null;
   id: ResidentIdRecord | null;
   residency: ResidencyStatus;
   signIn: SignInMethods;
@@ -125,6 +126,7 @@ export async function getResidentProfile(
       image: true,
       birthDate: true,
       mobileNumber: true,
+      purok: true,
       ids: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -160,6 +162,7 @@ export async function getResidentProfile(
     image: user.image,
     birthDate: user.birthDate?.toISOString() ?? null,
     mobileNumber: user.mobileNumber,
+    purok: user.purok,
     id: latestId
       ? {
           type: latestId.type,

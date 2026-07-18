@@ -15,7 +15,8 @@ import {
   TableCard,
   useClientPagination,
 } from "@/components/ui/data-table";
-import { UserRoles } from "@/app/generated/prisma/enums";
+import { UserRoles, type Purok } from "@/app/generated/prisma/enums";
+import { PUROK_LABELS } from "@/lib/purok";
 import { AccountStatusBadge } from "./account-status-badge";
 import { RoleBadge } from "./role-badge";
 import { formatDate, initialsOf } from "../_data";
@@ -26,6 +27,8 @@ export type OfficialRow = {
   name: string;
   email: string;
   roles: UserRoles[];
+  /** A kagawad's assigned purok; null for other roles. */
+  purok: Purok | null;
   emailVerified: boolean;
   createdAt: Date;
 };
@@ -68,10 +71,15 @@ export function OfficialsTable({ officials }: { officials: OfficialRow[] }) {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     {o.roles.map((r) => (
                       <RoleBadge key={r} role={r} />
                     ))}
+                    {o.roles.includes(UserRoles.KAGAWAD) && o.purok && (
+                      <span className="inline-flex h-6 items-center rounded-3xl border border-border px-2.5 text-xs font-medium text-muted-foreground">
+                        {PUROK_LABELS[o.purok]}
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">

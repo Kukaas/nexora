@@ -13,6 +13,7 @@ import {
   updateResidentProfile,
   type UpdateProfileInput,
 } from "@/lib/resident-actions";
+import { PUROK_LABELS, PUROK_ORDER } from "@/lib/purok";
 import { cn } from "@/lib/utils";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +70,7 @@ const schema = z.object({
       (v) => PH_MOBILE.test(v.replace(/[\s\-()]/g, "")),
       "Enter a valid PH mobile number, e.g. 0917 123 4567.",
     ),
+  purok: z.string().min(1, "Choose your purok."),
 });
 
 type Values = z.infer<typeof schema>;
@@ -72,6 +81,7 @@ export type ProfileInitial = {
   lastName: string;
   birthDate: string | null;
   mobileNumber: string;
+  purok: string | null;
   image: string | null;
 };
 
@@ -95,6 +105,7 @@ export function ProfileForm({
     lastName: useId(),
     birthDate: useId(),
     mobile: useId(),
+    purok: useId(),
   };
 
   const [avatar, setAvatar] = useState<string | null>(initial.image);
@@ -118,6 +129,7 @@ export function ProfileForm({
       lastName: initial.lastName,
       birthDate: initial.birthDate ? new Date(initial.birthDate) : undefined,
       mobileNumber: initial.mobileNumber,
+      purok: initial.purok ?? "",
     },
   });
 
@@ -138,6 +150,7 @@ export function ProfileForm({
       lastName: values.lastName,
       birthDate: format(values.birthDate, "yyyy-MM-dd"),
       mobileNumber: values.mobileNumber,
+      purok: values.purok as UpdateProfileInput["purok"],
       image: avatar,
     };
     const result = await updateResidentProfile(payload);
@@ -312,6 +325,44 @@ export function ProfileForm({
               />
               {errors.birthDate && (
                 <FieldError>{errors.birthDate.message}</FieldError>
+              )}
+            </Field>
+
+            <Field data-invalid={!!errors.purok}>
+              <FieldLabel htmlFor={ids.purok}>Purok</FieldLabel>
+              <Controller
+                control={control}
+                name="purok"
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={busy}
+                  >
+                    <SelectTrigger
+                      id={ids.purok}
+                      className="w-full"
+                      aria-invalid={!!errors.purok}
+                    >
+                      <SelectValue placeholder="Select your purok" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PUROK_ORDER.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {PUROK_LABELS[p]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.purok ? (
+                <FieldError>{errors.purok.message}</FieldError>
+              ) : (
+                <FieldDescription>
+                  The purok where you live. Purok notices in your feed follow
+                  this.
+                </FieldDescription>
               )}
             </Field>
 

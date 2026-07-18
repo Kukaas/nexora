@@ -33,15 +33,19 @@ import {
   useClientPagination,
 } from "@/components/ui/data-table";
 import { CATEGORY_LABELS, type AnnouncementDTO } from "@/lib/documents";
+import { purokLabel } from "@/lib/purok";
 import { formatDate } from "./secretary-ui";
 
 export function AnnouncementsManager({
   announcements,
   basePath,
+  showAudience = true,
 }: {
   announcements: AnnouncementDTO[];
   /** Announcements route prefix, e.g. `/secretary/{id}/announcements`. */
   basePath: string;
+  /** Hide the audience column when the list is already purok-scoped (kagawad). */
+  showAudience?: boolean;
 }) {
   const pg = useClientPagination(announcements, 10);
 
@@ -88,6 +92,11 @@ export function AnnouncementsManager({
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
                     Category
                   </TableHead>
+                  {showAudience && (
+                    <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
+                      Audience
+                    </TableHead>
+                  )}
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
                     Date
                   </TableHead>
@@ -127,6 +136,11 @@ export function AnnouncementsManager({
                         {CATEGORY_LABELS[a.category]}
                       </span>
                     </TableCell>
+                    {showAudience && (
+                      <TableCell className="text-sm text-muted-foreground">
+                        {purokLabel(a.purok)}
+                      </TableCell>
+                    )}
                     <TableCell className="text-sm text-muted-foreground tabular-nums">
                       {a.date ? formatDate(a.date) : "—"}
                     </TableCell>
@@ -172,6 +186,11 @@ export function AnnouncementsManager({
                     <span className="inline-flex h-6 items-center rounded-3xl border border-border px-2.5 text-xs font-medium text-muted-foreground">
                       {CATEGORY_LABELS[a.category]}
                     </span>
+                    {showAudience && a.purok && (
+                      <span className="inline-flex h-6 items-center rounded-3xl border border-border px-2.5 text-xs font-medium text-muted-foreground">
+                        {purokLabel(a.purok)}
+                      </span>
+                    )}
                     {a.pinned && (
                       <span className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground">
                         <Pin className="size-3" aria-hidden />

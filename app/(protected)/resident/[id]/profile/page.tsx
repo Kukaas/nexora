@@ -14,6 +14,7 @@ import {
 import { getSession } from "@/lib/session";
 import { getResidentProfile } from "@/lib/profile";
 import { ID_TYPE_LABELS } from "@/lib/ids";
+import { PUROK_LABELS } from "@/lib/purok";
 import { IDStatus } from "@/app/generated/prisma/enums";
 import {
   Avatar,
@@ -124,6 +125,10 @@ export default async function ResidentProfilePage({
                 <InfoRow
                   label="Mobile number"
                   value={formatMobile(profile.mobileNumber)}
+                />
+                <InfoRow
+                  label="Purok"
+                  value={profile.purok ? PUROK_LABELS[profile.purok] : "Not set"}
                 />
               </dl>
             </CardContent>

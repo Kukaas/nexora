@@ -401,7 +401,7 @@ export function ChatThread({
             aria-label="Write a message"
             enterKeyHint="send"
             placeholder="Write a message…"
-            className="max-h-32 min-h-10 flex-1 resize-none rounded-3xl border border-border bg-input/50 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+            className="max-h-32 min-h-10 flex-1 resize-none rounded-3xl border border-border bg-input/50 px-4 py-2.5 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           />
 
           <button

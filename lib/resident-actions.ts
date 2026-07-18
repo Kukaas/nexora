@@ -7,9 +7,10 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteCloudinaryImage, uploadImage } from "@/lib/cloudinary";
-import { IDStatus, IDType } from "@/app/generated/prisma/enums";
+import { IDStatus, IDType, Purok } from "@/app/generated/prisma/enums";
 
 const ID_TYPE_VALUES = Object.values(IDType) as [IDType, ...IDType[]];
+const PUROK_VALUES = Object.values(Purok) as [Purok, ...Purok[]];
 
 const setupSchema = z.object({
   firstName: z.string().trim().min(1, "Enter your first name.").max(80),
@@ -17,6 +18,7 @@ const setupSchema = z.object({
   lastName: z.string().trim().min(1, "Enter your last name.").max(80),
   birthDate: z.string().min(1, "Select your date of birth."),
   mobileNumber: z.string().trim().min(1, "Enter your mobile number."),
+  purok: z.enum(PUROK_VALUES, { message: "Choose your purok." }),
   idType: z.enum(ID_TYPE_VALUES, { message: "Choose your ID type." }),
   idNumber: z.string().trim().min(1, "Enter your ID number.").max(60),
   idFront: z.string().url("Upload the front of your ID."),
@@ -116,6 +118,7 @@ export async function completeResidentSetup(
           name: fullName,
           birthDate,
           mobileNumber: mobile,
+          purok: data.purok,
           profileCompletedAt: new Date(),
         },
       });
@@ -278,6 +281,7 @@ const updateProfileSchema = z.object({
   lastName: z.string().trim().min(1, "Enter your last name.").max(80),
   birthDate: z.string().min(1, "Select your date of birth."),
   mobileNumber: z.string().trim().min(1, "Enter your mobile number."),
+  purok: z.enum(PUROK_VALUES, { message: "Choose your purok." }),
   // Cloudinary URL of a newly uploaded avatar, or null to remove it. Omit to
   // leave the current photo untouched.
   image: z.string().url().nullable().optional(),
@@ -374,6 +378,7 @@ export async function updateResidentProfile(
         name: fullName,
         birthDate,
         mobileNumber: mobile,
+        purok: data.purok,
         ...(data.image !== undefined ? { image: data.image } : {}),
       },
     });

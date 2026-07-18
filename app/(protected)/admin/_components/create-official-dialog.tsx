@@ -17,7 +17,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { createOfficial } from "@/lib/admin-actions";
+import { createOfficial, type CreateOfficialInput } from "@/lib/admin-actions";
+import { PUROK_LABELS, PUROK_ORDER } from "@/lib/purok";
+import { UserRoles } from "@/app/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,17 +51,28 @@ import {
 } from "@/components/ui/field";
 import { ASSIGNABLE_ROLES, ROLE_META } from "../_data";
 
-const schema = z.object({
-  firstName: z.string().trim().min(1, "Enter a first name."),
-  middleName: z.string().trim().optional(),
-  lastName: z.string().trim().min(1, "Enter a last name."),
-  email: z
-    .string()
-    .trim()
-    .min(1, "Enter an email address.")
-    .email("Enter a valid email address."),
-  role: z.enum(ASSIGNABLE_ROLES, { message: "Choose a role." }),
-});
+const schema = z
+  .object({
+    firstName: z.string().trim().min(1, "Enter a first name."),
+    middleName: z.string().trim().optional(),
+    lastName: z.string().trim().min(1, "Enter a last name."),
+    email: z
+      .string()
+      .trim()
+      .min(1, "Enter an email address.")
+      .email("Enter a valid email address."),
+    role: z.enum(ASSIGNABLE_ROLES, { message: "Choose a role." }),
+    purok: z.string().optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.role === UserRoles.KAGAWAD && !val.purok) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose the purok this kagawad is assigned to.",
+        path: ["purok"],
+      });
+    }
+  });
 
 type Values = z.infer<typeof schema>;
 
@@ -122,12 +135,14 @@ function CreateForm({ onCreated }: { onCreated: (c: Created) => void }) {
   const lastId = useId();
   const emailId = useId();
   const roleId = useId();
+  const purokId = useId();
   const [formError, setFormError] = useState<string | null>(null);
 
   const {
     control,
     register,
     handleSubmit,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<Values>({
     resolver: zodResolver(schema),
@@ -137,12 +152,18 @@ function CreateForm({ onCreated }: { onCreated: (c: Created) => void }) {
       lastName: "",
       email: "",
       role: undefined,
+      purok: undefined,
     },
   });
 
+  const isKagawad = watch("role") === UserRoles.KAGAWAD;
+
   const onSubmit = async (values: Values) => {
     setFormError(null);
-    const result = await createOfficial(values);
+    const result = await createOfficial({
+      ...values,
+      purok: values.purok as CreateOfficialInput["purok"],
+    });
     if (!result.ok) {
       setFormError(result.error);
       return;
@@ -299,6 +320,46 @@ function CreateForm({ onCreated }: { onCreated: (c: Created) => void }) {
             />
             {errors.role && <FieldError>{errors.role.message}</FieldError>}
           </Field>
+
+          {isKagawad && (
+            <Field data-invalid={!!errors.purok}>
+              <FieldLabel htmlFor={purokId}>Assigned purok</FieldLabel>
+              <Controller
+                control={control}
+                name="purok"
+                render={({ field }) => (
+                  <Select
+                    value={field.value ?? ""}
+                    onValueChange={field.onChange}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger
+                      id={purokId}
+                      className="w-full"
+                      aria-invalid={!!errors.purok}
+                    >
+                      <SelectValue placeholder="Choose a purok" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PUROK_ORDER.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {PUROK_LABELS[p]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.purok ? (
+                <FieldError>{errors.purok.message}</FieldError>
+              ) : (
+                <FieldDescription>
+                  The purok this kagawad oversees. Their announcements go to
+                  residents of this purok.
+                </FieldDescription>
+              )}
+            </Field>
+          )}
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <DialogClose asChild>

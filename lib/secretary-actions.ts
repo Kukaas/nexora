@@ -9,6 +9,7 @@ import { hasAccess } from "@/lib/roles";
 import {
   AnnouncementCategory,
   DocumentRequestStatus,
+  Purok,
   UserRoles,
 } from "@/app/generated/prisma/enums";
 import { DOCUMENT_FIELD_TYPES, isWithinLibtangin } from "@/lib/documents";
@@ -327,6 +328,63 @@ export async function deleteDocumentType(input: {
 }
 
 // ── Announcements ────────────────────────────────────────────────────────────
+//
+// Two roles write announcements: the secretary (or an admin), who can address
+// the whole barangay or any purok, and a kagawad, who is locked to the purok
+// the admin assigned them. `requireAnnouncer` resolves which of the two the
+// caller is; every announcement action funnels through it.
+
+const PUROK_VALUES = Object.values(Purok) as [Purok, ...Purok[]];
+
+type AnnouncerAuth =
+  | { ok: true; userId: string; scope: "all" }
+  | { ok: true; userId: string; scope: "purok"; purok: Purok }
+  | { ok: false; error: string };
+
+/**
+ * Confirm the caller may write announcements. A secretary/admin gets the "all"
+ * scope; a kagawad gets a scope pinned to their assigned purok (and is refused
+ * while no purok is assigned, since their notices would have no audience).
+ */
+async function requireAnnouncer(): Promise<AnnouncerAuth> {
+  const session = await getSession();
+  if (!session) {
+    return { ok: false, error: "Your session has expired. Sign in again." };
+  }
+  const roles = session.user.roles as UserRoles[] | undefined;
+  if (hasAccess(roles, UserRoles.SECRETARY)) {
+    return { ok: true, userId: session.user.id, scope: "all" };
+  }
+  if (roles?.includes(UserRoles.KAGAWAD)) {
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { purok: true },
+    });
+    if (!user?.purok) {
+      return {
+        ok: false,
+        error:
+          "You don't have an assigned purok yet. Ask the administrator to set one before posting.",
+      };
+    }
+    return {
+      ok: true,
+      userId: session.user.id,
+      scope: "purok",
+      purok: user.purok,
+    };
+  }
+  return { ok: false, error: "You don't have permission to do that." };
+}
+
+/** Refresh every surface that lists announcements, whoever authored them. */
+function revalidateAnnouncements(userId: string) {
+  revalidatePath(`/secretary/${userId}`);
+  revalidatePath(`/secretary/${userId}/announcements`);
+  revalidatePath(`/kagawad/${userId}`);
+  revalidatePath(`/kagawad/${userId}/announcements`);
+  revalidatePath("/resident");
+}
 
 const announcementSchema = z.object({
   id: z.string().min(1).optional(),
@@ -359,6 +417,9 @@ const announcementSchema = z.object({
     .optional(),
   // Cloudinary URL of an already-uploaded event image; optional.
   imageUrl: z.string().url().optional(),
+  // The purok the notice targets; omitted means barangay-wide. Ignored for a
+  // kagawad, whose assigned purok always wins.
+  purok: z.enum(PUROK_VALUES).optional(),
   pinned: z.boolean(),
   published: z.boolean(),
 }).superRefine((val, ctx) => {
@@ -392,7 +453,7 @@ const MAX_ANNOUNCEMENT_IMAGE_BYTES = 8 * 1024 * 1024;
 export async function uploadAnnouncementImage(formData: FormData): Promise<
   { ok: true; url: string } | { ok: false; error: string }
 > {
-  const auth = await requireSecretary();
+  const auth = await requireAnnouncer();
   if (!auth.ok) return auth;
 
   const file = formData.get("image");
@@ -419,7 +480,7 @@ export async function uploadAnnouncementImage(formData: FormData): Promise<
 export async function saveAnnouncement(
   input: z.infer<typeof announcementSchema>,
 ): Promise<ActionResult> {
-  const auth = await requireSecretary();
+  const auth = await requireAnnouncer();
   if (!auth.ok) return auth;
 
   const parsed = announcementSchema.safeParse(input);
@@ -445,6 +506,11 @@ export async function saveAnnouncement(
     published,
   } = parsed.data;
 
+  // A kagawad's notices always target their own purok, whatever the client
+  // sent; the secretary targets whichever purok they picked (or the barangay).
+  const purok =
+    auth.scope === "purok" ? auth.purok : (parsed.data.purok ?? null);
+
   const data = {
     title,
     body,
@@ -459,6 +525,7 @@ export async function saveAnnouncement(
     // An end time only means something alongside a start; drop a stray end.
     endTime: startTime ? endTime || null : null,
     imageUrl: imageUrl || null,
+    purok,
     pinned,
     published,
     authorId: auth.userId,
@@ -470,18 +537,24 @@ export async function saveAnnouncement(
     // deleted file (best-effort; a failed cleanup just leaves an orphan).
     const existing = await prisma.announcement.findUnique({
       where: { id },
-      select: { imageUrl: true },
+      select: { imageUrl: true, purok: true },
     });
+    if (!existing) {
+      return { ok: false, error: "That announcement no longer exists." };
+    }
+    // A kagawad may only edit notices addressed to their own purok.
+    if (auth.scope === "purok" && existing.purok !== auth.purok) {
+      return { ok: false, error: "You can only edit your purok's announcements." };
+    }
     await prisma.announcement.update({ where: { id }, data });
-    if (existing?.imageUrl && existing.imageUrl !== data.imageUrl) {
+    if (existing.imageUrl && existing.imageUrl !== data.imageUrl) {
       await deleteCloudinaryImage(existing.imageUrl);
     }
   } else {
     await prisma.announcement.create({ data });
   }
 
-  revalidateSecretary(auth.userId);
-  revalidatePath("/resident");
+  revalidateAnnouncements(auth.userId);
   return { ok: true };
 }
 
@@ -489,13 +562,22 @@ export async function saveAnnouncement(
 export async function deleteAnnouncement(input: {
   id: string;
 }): Promise<ActionResult> {
-  const auth = await requireSecretary();
+  const auth = await requireAnnouncer();
   if (!auth.ok) return auth;
+
+  const existing = await prisma.announcement.findUnique({
+    where: { id: input.id },
+    select: { purok: true },
+  });
+  if (!existing) return { ok: true };
+  // A kagawad may only delete notices addressed to their own purok.
+  if (auth.scope === "purok" && existing.purok !== auth.purok) {
+    return { ok: false, error: "You can only delete your purok's announcements." };
+  }
 
   const deleted = await prisma.announcement.delete({ where: { id: input.id } });
   // Reap the event image too, so deleting a notice doesn't orphan its asset.
   if (deleted.imageUrl) await deleteCloudinaryImage(deleted.imageUrl);
-  revalidateSecretary(auth.userId);
-  revalidatePath("/resident");
+  revalidateAnnouncements(auth.userId);
   return { ok: true };
 }

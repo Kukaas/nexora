@@ -10,7 +10,8 @@ import { createEmailVerificationToken } from "better-auth/api";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendOfficialWelcomeEmail } from "@/lib/mailer";
-import { IDStatus, UserRoles } from "@/app/generated/prisma/enums";
+import { PUROK_LABELS } from "@/lib/purok";
+import { IDStatus, Purok, UserRoles } from "@/app/generated/prisma/enums";
 
 /** Roles an admin can assign when creating an official account. */
 const ASSIGNABLE_ROLES = [
@@ -30,17 +31,31 @@ const ROLE_LABEL: Record<(typeof ASSIGNABLE_ROLES)[number], string> = {
   [UserRoles.ADMIN]: "Administrator",
 };
 
-const createOfficialSchema = z.object({
-  firstName: z.string().trim().min(1, "Enter a first name.").max(80),
-  middleName: z.string().trim().max(80).optional(),
-  lastName: z.string().trim().min(1, "Enter a last name.").max(80),
-  email: z
-    .string()
-    .trim()
-    .min(1, "Enter an email address.")
-    .email("Enter a valid email address."),
-  role: z.enum(ASSIGNABLE_ROLES, { message: "Choose a role." }),
-});
+const PUROK_VALUES = Object.values(Purok) as [Purok, ...Purok[]];
+
+const createOfficialSchema = z
+  .object({
+    firstName: z.string().trim().min(1, "Enter a first name.").max(80),
+    middleName: z.string().trim().max(80).optional(),
+    lastName: z.string().trim().min(1, "Enter a last name.").max(80),
+    email: z
+      .string()
+      .trim()
+      .min(1, "Enter an email address.")
+      .email("Enter a valid email address."),
+    role: z.enum(ASSIGNABLE_ROLES, { message: "Choose a role." }),
+    // A kagawad's assigned purok; required for that role, ignored otherwise.
+    purok: z.enum(PUROK_VALUES).optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (val.role === UserRoles.KAGAWAD && !val.purok) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Choose the purok this kagawad is assigned to.",
+        path: ["purok"],
+      });
+    }
+  });
 
 export type CreateOfficialInput = z.input<typeof createOfficialSchema>;
 
@@ -101,6 +116,8 @@ export async function createOfficial(
 
   const { firstName, lastName, role } = parsed.data;
   const middleName = parsed.data.middleName?.trim() || null;
+  // Only a kagawad carries an assigned purok; drop it for any other role.
+  const purok = role === UserRoles.KAGAWAD ? (parsed.data.purok ?? null) : null;
   // Better Auth stores emails lowercased; match that so sign-in and uniqueness
   // line up.
   const email = parsed.data.email.toLowerCase();
@@ -130,6 +147,7 @@ export async function createOfficial(
           middleName,
           lastName,
           emailVerified: false,
+          purok,
           // Force them to replace the temporary password on first sign-in.
           mustChangePassword: true,
           roles: { set: [role] },
@@ -194,7 +212,10 @@ export async function createOfficial(
 
     await sendOfficialWelcomeEmail(email, {
       name,
-      roleLabel: ROLE_LABEL[role],
+      // A kagawad's welcome names their assigned purok, e.g. "Kagawad (Purok 3)".
+      roleLabel: purok
+        ? `${ROLE_LABEL[role]} (${PUROK_LABELS[purok]})`
+        : ROLE_LABEL[role],
       tempPassword,
       verifyUrl: verifyUrl.toString(),
     });

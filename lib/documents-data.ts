@@ -13,6 +13,7 @@ import type { PaymentMethodDTO } from "@/lib/payments";
 import {
   AnnouncementCategory,
   PaymentMethodType,
+  type Purok,
 } from "@/app/generated/prisma/enums";
 import { METHOD_ORDER } from "@/lib/payments";
 
@@ -185,23 +186,66 @@ export type AnnouncementsPage = {
 };
 
 /**
+ * The purok on a user's profile, read fresh so the announcement feed follows a
+ * profile edit immediately. Better Auth's session doesn't carry custom columns,
+ * so feed readers look it up here.
+ */
+export async function getUserPurok(userId: string): Promise<Purok | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { purok: true },
+  });
+  return user?.purok ?? null;
+}
+
+/**
  * A page of published announcements, pinned first then newest, optionally
  * scoped to one category. `skip` is the number already shown; `take` defaults
  * to {@link ANNOUNCEMENTS_PAGE_SIZE}. We fetch one extra row to know whether a
  * "Load more" is worth offering without a second count query.
+ *
+ * `forPurok` scopes the feed to one resident's view: barangay-wide notices plus
+ * their own purok's. Pass `null` for a resident with no purok on file (they see
+ * barangay-wide only); leave it `undefined` for an unscoped view (officials).
+ *
+ * `audience` narrows further within that view: "barangay" keeps only
+ * barangay-wide notices, "purok" keeps only the resident's own purok's (empty
+ * when they have none), and "all" (the default) shows both.
  */
 export async function getPublishedAnnouncementsPage(opts: {
   skip?: number;
   take?: number;
   category?: AnnouncementCategory | null;
+  forPurok?: Purok | null;
+  audience?: "all" | "barangay" | "purok";
 } = {}): Promise<AnnouncementsPage> {
   const take = opts.take ?? ANNOUNCEMENTS_PAGE_SIZE;
   const skip = opts.skip ?? 0;
+
+  let purokWhere = {};
+  if (opts.forPurok !== undefined) {
+    const audience = opts.audience ?? "all";
+    if (audience === "barangay") {
+      purokWhere = { purok: null };
+    } else if (audience === "purok") {
+      // A resident with no purok on file has no purok-only notices to see.
+      if (!opts.forPurok) return { items: [], hasMore: false };
+      purokWhere = { purok: opts.forPurok };
+    } else {
+      purokWhere = {
+        OR: [
+          { purok: null },
+          ...(opts.forPurok ? [{ purok: opts.forPurok }] : []),
+        ],
+      };
+    }
+  }
 
   const rows = await prisma.announcement.findMany({
     where: {
       published: true,
       ...(opts.category ? { category: opts.category } : {}),
+      ...purokWhere,
     },
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
     skip,

@@ -2,6 +2,7 @@ import {
   AnnouncementCategory,
   DocumentRequestStatus,
   PaymentMethodType,
+  type Purok,
 } from "@/app/generated/prisma/enums";
 
 /**
@@ -168,6 +169,8 @@ export type AnnouncementDTO = {
   endTime: string | null;
   /** Cloudinary URL of the event image; null if none. */
   imageUrl: string | null;
+  /** The purok this notice targets; null means barangay-wide. */
+  purok: Purok | null;
   authorName: string | null;
   createdAt: string;
 };

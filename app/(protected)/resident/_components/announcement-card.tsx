@@ -25,6 +25,7 @@ import {
   type AnnouncementDTO,
 } from "@/lib/documents";
 import { AnnouncementCategory } from "@/app/generated/prisma/enums";
+import { PUROK_LABELS } from "@/lib/purok";
 import { LibtanginMapView } from "@/components/libtangin-map";
 import { formatFullDate, formatShortDate } from "../_data";
 
@@ -85,6 +86,11 @@ export function AnnouncementCard({ item }: { item: AnnouncementDTO }) {
             <CategoryIcon className="size-3.5" aria-hidden />
             {CATEGORY_LABELS[item.category]}
           </span>
+          {item.purok && (
+            <span className="inline-flex h-6 items-center rounded-full bg-accent px-2.5 text-xs font-medium text-accent-foreground">
+              {PUROK_LABELS[item.purok]}
+            </span>
+          )}
           {item.pinned && !item.imageUrl && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-accent-foreground">
               <Pin className="size-3" aria-hidden />

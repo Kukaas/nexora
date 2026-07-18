@@ -74,6 +74,7 @@ export default async function EditProfilePage({
               lastName: profile.lastName ?? "",
               birthDate: profile.birthDate,
               mobileNumber: toLocalMobile(profile.mobileNumber),
+              purok: profile.purok,
               image: profile.image,
             }}
             initials={initialsOf(displayName)}

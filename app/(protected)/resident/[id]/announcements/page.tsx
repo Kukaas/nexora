@@ -4,8 +4,12 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { getSession } from "@/lib/session";
-import { getPublishedAnnouncementsPage } from "@/lib/documents-data";
+import {
+  getPublishedAnnouncementsPage,
+  getUserPurok,
+} from "@/lib/documents-data";
 import { BARANGAY } from "@/lib/documents";
+import { purokLabel } from "@/lib/purok";
 import { AnnouncementsBoard } from "../../_components/announcements-board";
 
 export const metadata: Metadata = {
@@ -27,7 +31,11 @@ export default async function ResidentAnnouncementsPage({
   // mismatched id in the URL bounces back to their own space.
   if (session.user.id !== id) redirect(`/resident/${session.user.id}/announcements`);
 
-  const { items, hasMore } = await getPublishedAnnouncementsPage();
+  // Barangay-wide notices plus the resident's own purok's.
+  const purok = await getUserPurok(session.user.id);
+  const { items, hasMore } = await getPublishedAnnouncementsPage({
+    forPurok: purok,
+  });
 
   return (
     <div className="w-full">
@@ -48,7 +56,11 @@ export default async function ResidentAnnouncementsPage({
         </p>
       </header>
 
-      <AnnouncementsBoard initialItems={items} initialHasMore={hasMore} />
+      <AnnouncementsBoard
+        initialItems={items}
+        initialHasMore={hasMore}
+        myPurokLabel={purok ? purokLabel(purok) : null}
+      />
     </div>
   );
 }

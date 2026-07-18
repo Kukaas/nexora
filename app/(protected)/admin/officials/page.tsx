@@ -24,6 +24,7 @@ export default async function OfficialsPage() {
       lastName: true,
       email: true,
       roles: true,
+      purok: true,
       emailVerified: true,
       createdAt: true,
     },
@@ -34,6 +35,7 @@ export default async function OfficialsPage() {
     name: displayName(o),
     email: o.email,
     roles: o.roles.filter((r) => OFFICIAL_ROLES.includes(r)),
+    purok: o.purok,
     emailVerified: o.emailVerified,
     createdAt: o.createdAt,
   }));
