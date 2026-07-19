@@ -1,52 +1,18 @@
 import type { Metadata } from "next";
 import { Activity } from "lucide-react";
 
-import { prisma } from "@/lib/prisma";
-import { UserRoles } from "@/app/generated/prisma/enums";
-import { residentStatus } from "../_components/account-status-badge";
-import {
-  ActivityTable,
-  type ActivityEvent,
-} from "../_components/activity-table";
-import { displayName, primaryRole } from "../_data";
+import { getActivityFeed } from "../_activity";
+import { ActivityTable } from "../_components/activity-table";
 
 export const metadata: Metadata = {
   title: "Activity log · Admin · Barangay Libtangin",
 };
 
-/** How many of the most recent account events to show. */
+/** How many of the most recent events to show. */
 const LIMIT = 50;
 
 export default async function ActivityPage() {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-    take: LIMIT,
-    select: {
-      id: true,
-      name: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      roles: true,
-      emailVerified: true,
-      profileCompletedAt: true,
-      createdAt: true,
-    },
-  });
-
-  // Flatten each account into a display row once, on the server.
-  const events: ActivityEvent[] = users.map((u) => {
-    const role = primaryRole(u.roles);
-    return {
-      id: u.id,
-      name: displayName(u),
-      email: u.email,
-      role,
-      isOfficial: role !== UserRoles.RESIDENT,
-      status: residentStatus(u),
-      createdAt: u.createdAt,
-    };
-  });
+  const events = await getActivityFeed(LIMIT);
 
   return (
     <div className="space-y-6">
@@ -55,8 +21,9 @@ export default async function ActivityPage() {
           Activity log
         </h1>
         <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-          The {LIMIT} most recent accounts to join the barangay registry, newest
-          first — officials you created and residents who registered.
+          The {LIMIT} most recent things to happen across the barangay, newest
+          first — registrations, ID verifications, document requests, and
+          announcements. Updates live as they come in.
         </p>
       </header>
 
@@ -69,8 +36,8 @@ export default async function ActivityPage() {
             <div className="space-y-1">
               <p className="font-medium text-foreground">No activity yet</p>
               <p className="max-w-xs text-sm text-muted-foreground">
-                Account events show up here as officials are created and
-                residents register.
+                Events show up here as residents register, IDs are reviewed, and
+                document requests come through.
               </p>
             </div>
           </div>
