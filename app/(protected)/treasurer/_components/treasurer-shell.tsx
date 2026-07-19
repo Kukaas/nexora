@@ -9,6 +9,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
+import { SocketProvider } from "@/components/realtime/socket-provider";
+import { RealtimeInvalidator } from "@/components/realtime/realtime-invalidator";
 import { TreasurerSidebar } from "./treasurer-sidebar";
 
 export type TreasurerUser = {
@@ -29,6 +31,8 @@ export function TreasurerShell({
 }) {
   return (
     <TooltipProvider delayDuration={0}>
+      <SocketProvider>
+      <RealtimeInvalidator />
       <SidebarProvider>
         <TreasurerSidebar
           user={user}
@@ -50,6 +54,7 @@ export function TreasurerShell({
         </SidebarInset>
         <Toaster position="top-center" richColors />
       </SidebarProvider>
+      </SocketProvider>
     </TooltipProvider>
   );
 }

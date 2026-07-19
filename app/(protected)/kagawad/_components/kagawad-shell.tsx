@@ -9,6 +9,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
+import { SocketProvider } from "@/components/realtime/socket-provider";
+import { RealtimeInvalidator } from "@/components/realtime/realtime-invalidator";
 import { KagawadSidebar } from "./kagawad-sidebar";
 
 export type KagawadUser = {
@@ -29,6 +31,8 @@ export function KagawadShell({
 }) {
   return (
     <TooltipProvider delayDuration={0}>
+      <SocketProvider>
+      <RealtimeInvalidator />
       <SidebarProvider>
         <KagawadSidebar user={user} />
         <SidebarInset>
@@ -52,6 +56,7 @@ export function KagawadShell({
         </SidebarInset>
         <Toaster position="top-center" richColors />
       </SidebarProvider>
+      </SocketProvider>
     </TooltipProvider>
   );
 }

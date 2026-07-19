@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { hasAccess } from "@/lib/roles";
 import { uploadImage } from "@/lib/cloudinary";
+import { emitInvalidate } from "@/lib/realtime/emit";
+import { INVALIDATION_TOPICS } from "@/lib/query/keys";
 import {
   DocumentRequestStatus,
   PaymentMethodType,
@@ -76,6 +78,7 @@ export async function reviewPayment(
     },
   });
 
+  emitInvalidate(INVALIDATION_TOPICS.officialsRequests, { toOfficials: true });
   revalidatePath(`/treasurer/${auth.userId}`);
   return { ok: true };
 }
@@ -176,6 +179,13 @@ export async function reviewDocumentRequest(
     },
   });
 
+  // The resident watching "My requests" sees this verify/reject decision live,
+  // and the officials' queues (a verify moves it into the secretary's PROCESSING
+  // queue) refresh too.
+  emitInvalidate(INVALIDATION_TOPICS.residentRequests, {
+    toUser: existing.requesterId,
+  });
+  emitInvalidate(INVALIDATION_TOPICS.officialsRequests, { toOfficials: true });
   revalidatePath(`/treasurer/${auth.userId}/payments`);
   revalidatePath(`/treasurer/${auth.userId}`);
   // The secretary's queue keys off PROCESSING, so refresh their console too.

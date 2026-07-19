@@ -11,6 +11,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
+import { SocketProvider } from "@/components/realtime/socket-provider";
+import { RealtimeInvalidator } from "@/components/realtime/realtime-invalidator";
 import { AdminSidebar } from "./admin-sidebar";
 
 export type AdminUser = {
@@ -39,6 +41,8 @@ export function AdminShell({
 
   return (
     <TooltipProvider delayDuration={0}>
+      <SocketProvider>
+      <RealtimeInvalidator />
       <SidebarProvider>
         <AdminSidebar user={user} />
         <SidebarInset>
@@ -57,6 +61,7 @@ export function AdminShell({
         </SidebarInset>
         <Toaster position="top-center" richColors />
       </SidebarProvider>
+      </SocketProvider>
     </TooltipProvider>
   );
 }

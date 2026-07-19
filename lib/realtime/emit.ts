@@ -15,6 +15,28 @@ function getIO(): Server | null {
   return (globalThis as unknown as { __nexoraIO?: Server }).__nexoraIO ?? null;
 }
 
+/**
+ * Tell clients a cached dataset changed so React Query refetches it (see
+ * lib/query/keys.ts for the topic↔query-key map). Target the smallest audience
+ * that cares: `toUser` reaches one person's open tabs, `toOfficials` the whole
+ * officials' room. Passing neither broadcasts to everyone — use sparingly, only
+ * for truly public data. A null/undefined `toUser` is ignored (e.g. walk-in
+ * requests have no resident to notify), so it never accidentally broadcasts.
+ */
+export function emitInvalidate(
+  topic: string,
+  target: { toUser?: string | null; toOfficials?: boolean } = {},
+): void {
+  const io = getIO();
+  if (!io) return;
+  const payload = { topic };
+  const { toUser, toOfficials } = target;
+
+  if (toUser) io.to(`user:${toUser}`).emit("data:invalidate", payload);
+  if (toOfficials) io.to("officials").emit("data:invalidate", payload);
+  if (!toUser && !toOfficials) io.emit("data:invalidate", payload);
+}
+
 /** Fan a newly-saved message out to the open thread, the officials' inbox, and
  * the resident, so every relevant client updates without a refresh. */
 export function emitNewMessage(

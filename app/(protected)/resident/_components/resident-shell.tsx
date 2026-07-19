@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
 import { SocketProvider } from "@/components/realtime/socket-provider";
+import { RealtimeInvalidator } from "@/components/realtime/realtime-invalidator";
 import { ResidentSidebar } from "./resident-sidebar";
 
 export type ResidentUser = {
@@ -23,21 +24,26 @@ export function ResidentShell({
   user,
   actionNeeded,
   messagesUnread,
+  verified,
   children,
 }: {
   user: ResidentUser;
   actionNeeded: number;
   messagesUnread: boolean;
+  /** ID approved by an official — gates the "Request a document" menu item. */
+  verified: boolean;
   children: React.ReactNode;
 }) {
   return (
     <TooltipProvider delayDuration={0}>
       <SocketProvider>
+      <RealtimeInvalidator />
       <SidebarProvider>
         <ResidentSidebar
           user={user}
           actionNeeded={actionNeeded}
           messagesUnread={messagesUnread}
+          verified={verified}
         />
         <SidebarInset>
           <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background/85 px-4 backdrop-blur-md sm:px-6">

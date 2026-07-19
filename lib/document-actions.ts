@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { isResidencyVerified } from "@/lib/profile";
 import { deleteCloudinaryImage, uploadImage } from "@/lib/cloudinary";
+import { emitInvalidate } from "@/lib/realtime/emit";
+import { INVALIDATION_TOPICS } from "@/lib/query/keys";
 import {
   DocumentRequestStatus,
   PaymentMethodType,
@@ -187,6 +189,8 @@ export async function submitDocumentRequest(
     },
   });
 
+  emitInvalidate(INVALIDATION_TOPICS.residentRequests, { toUser: user.id });
+  emitInvalidate(INVALIDATION_TOPICS.officialsRequests, { toOfficials: true });
   revalidatePath(`/resident/${user.id}`);
   return { ok: true, referenceNumber };
 }
@@ -380,6 +384,10 @@ export async function updateDocumentRequest(
     await deleteCloudinaryImage(existing.proofImage);
   }
 
+  emitInvalidate(INVALIDATION_TOPICS.residentRequests, {
+    toUser: session.user.id,
+  });
+  emitInvalidate(INVALIDATION_TOPICS.officialsRequests, { toOfficials: true });
   revalidatePath(`/resident/${session.user.id}`);
   revalidatePath(`/resident/${session.user.id}/requests`);
   revalidatePath(`/resident/${session.user.id}/requests/${existing.id}`);

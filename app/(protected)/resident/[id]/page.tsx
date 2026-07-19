@@ -27,12 +27,15 @@ import {
   getPublishedAnnouncementsPage,
   getUserPurok,
 } from "@/lib/documents-data";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
 import Link from "next/link";
 
+import { getQueryClient } from "@/lib/query/get-query-client";
+import { queryKeys } from "@/lib/query/keys";
 import { Button } from "@/components/ui/button";
 import { AnnouncementsFeed } from "../_components/announcements-feed";
-import { StatusBadge } from "../_components/status-badge";
-import { formatFullDate, formatShortDate, residentStatus } from "../_data";
+import { OverviewRequestsCard } from "../_components/overview-requests-card";
+import { formatFullDate } from "../_data";
 
 export const metadata: Metadata = {
   title: "Resident portal · Barangay Libtangin",
@@ -66,11 +69,22 @@ export default async function ResidentPage({
   // request-only queries since they can't transact yet.
   // The feed shows barangay-wide notices plus the resident's own purok's.
   const purok = await getUserPurok(session.user.id);
-  const [myRequests, announcements] = await Promise.all([
-    verified ? getMyDocumentRequests(session.user.id) : Promise.resolve([]),
-    // Just a preview on the dashboard; the full, paginated list is its own page.
-    getPublishedAnnouncementsPage({ take: 4, forPurok: purok }),
-  ]);
+  // Just a preview on the dashboard; the full, paginated list is its own page.
+  const announcements = await getPublishedAnnouncementsPage({
+    take: 4,
+    forPurok: purok,
+  });
+
+  // The "My requests" card reads the same cached list the /requests page uses, so
+  // it's shared across the portal, survives tab switches, and updates live on a
+  // socket invalidation. Prefetch it here so the card is populated on first paint.
+  const queryClient = getQueryClient();
+  if (verified) {
+    await queryClient.prefetchQuery({
+      queryKey: queryKeys.residentRequests,
+      queryFn: () => getMyDocumentRequests(session.user.id),
+    });
+  }
 
   return (
     <div className="space-y-6 lg:space-y-8">
@@ -129,69 +143,9 @@ export default async function ResidentPage({
 
         <aside className="space-y-6">
           {verified && (
-            <section id="my-requests" className="scroll-mt-20">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between gap-2">
-                    My requests
-                    {myRequests.length > 0 && (
-                      <Button
-                        asChild
-                        variant="ghost"
-                        size="sm"
-                        className="-mr-1.5 text-muted-foreground"
-                      >
-                        <Link href={`/resident/${id}/requests`}>View all</Link>
-                      </Button>
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    Documents you&apos;ve requested and where they stand.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {myRequests.length === 0 ? (
-                    <p className="py-2 text-sm text-muted-foreground text-pretty">
-                      You haven&apos;t requested any documents yet. Pick one above
-                      to get started.
-                    </p>
-                  ) : (
-                    <ul className="-my-1 divide-y divide-border">
-                      {myRequests.slice(0, 5).map((req) => (
-                        <li
-                          key={req.id}
-                          className="flex items-start justify-between gap-3 py-3.5"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">
-                              {req.documentName}
-                            </p>
-                            <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                              {req.referenceNumber}
-                            </p>
-                          </div>
-                          <div className="flex shrink-0 flex-col items-end gap-1">
-                            <StatusBadge status={residentStatus(req.status)} />
-                            <span className="text-[0.6875rem] text-muted-foreground tabular-nums">
-                              Updated{" "}
-                              {formatShortDate(req.reviewedAt ?? req.createdAt)}
-                            </span>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardContent>
-                <CardFooter>
-                  <Button asChild className="w-full" size="lg">
-                    <Link href={`/resident/${id}/request`}>
-                      <FilePlus2 />
-                      Request a document
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            </section>
+            <HydrationBoundary state={dehydrate(queryClient)}>
+              <OverviewRequestsCard id={id} />
+            </HydrationBoundary>
           )}
 
           <Card>

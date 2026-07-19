@@ -9,6 +9,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
+import { SocketProvider } from "@/components/realtime/socket-provider";
+import { RealtimeInvalidator } from "@/components/realtime/realtime-invalidator";
 import { SecretarySidebar } from "./secretary-sidebar";
 
 export type SecretaryUser = {
@@ -29,6 +31,8 @@ export function SecretaryShell({
 }) {
   return (
     <TooltipProvider delayDuration={0}>
+      <SocketProvider>
+      <RealtimeInvalidator />
       <SidebarProvider>
         <SecretarySidebar user={user} pendingCount={pendingCount} />
         <SidebarInset>
@@ -47,6 +51,7 @@ export function SecretaryShell({
         </SidebarInset>
         <Toaster position="top-center" richColors />
       </SidebarProvider>
+      </SocketProvider>
     </TooltipProvider>
   );
 }

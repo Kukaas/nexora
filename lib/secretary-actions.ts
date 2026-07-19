@@ -6,6 +6,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { hasAccess } from "@/lib/roles";
+import { emitInvalidate } from "@/lib/realtime/emit";
+import { INVALIDATION_TOPICS } from "@/lib/query/keys";
 import {
   AnnouncementCategory,
   DocumentRequestStatus,
@@ -64,7 +66,7 @@ export async function markRequestReady(input: {
 
   const existing = await prisma.documentRequest.findUnique({
     where: { id: input.requestId },
-    select: { status: true },
+    select: { status: true, requesterId: true },
   });
   if (!existing) return { ok: false, error: "That request no longer exists." };
   if (existing.status !== DocumentRequestStatus.PROCESSING) {
@@ -79,6 +81,10 @@ export async function markRequestReady(input: {
     data: { status: DocumentRequestStatus.READY, releasedAt: new Date() },
   });
 
+  emitInvalidate(INVALIDATION_TOPICS.residentRequests, {
+    toUser: existing.requesterId,
+  });
+  emitInvalidate(INVALIDATION_TOPICS.officialsRequests, { toOfficials: true });
   revalidateSecretary(auth.userId);
   return { ok: true };
 }
@@ -92,7 +98,7 @@ export async function markRequestClaimed(input: {
 
   const existing = await prisma.documentRequest.findUnique({
     where: { id: input.requestId },
-    select: { status: true },
+    select: { status: true, requesterId: true },
   });
   if (!existing) return { ok: false, error: "That request no longer exists." };
   if (existing.status !== DocumentRequestStatus.READY) {
@@ -107,6 +113,10 @@ export async function markRequestClaimed(input: {
     data: { status: DocumentRequestStatus.CLAIMED },
   });
 
+  emitInvalidate(INVALIDATION_TOPICS.residentRequests, {
+    toUser: existing.requesterId,
+  });
+  emitInvalidate(INVALIDATION_TOPICS.officialsRequests, { toOfficials: true });
   revalidateSecretary(auth.userId);
   return { ok: true };
 }
@@ -201,6 +211,7 @@ export async function createWalkInRequest(
     select: { id: true },
   });
 
+  emitInvalidate(INVALIDATION_TOPICS.officialsRequests, { toOfficials: true });
   revalidatePath(`/secretary/${auth.userId}/requests`);
   revalidatePath("/treasurer", "layout");
   return { ok: true, id: created.id, referenceNumber };
@@ -504,6 +515,9 @@ function revalidateAnnouncements(userId: string) {
   revalidatePath(`/kagawad/${userId}`);
   revalidatePath(`/kagawad/${userId}/announcements`);
   revalidatePath("/resident");
+  // Push residents currently in the portal to refresh their feed live. Broadcast
+  // (not room-scoped) since a notice can target any purok / all residents.
+  emitInvalidate(INVALIDATION_TOPICS.announcements);
 }
 
 const announcementSchema = z.object({

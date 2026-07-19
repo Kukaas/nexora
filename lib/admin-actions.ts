@@ -11,6 +11,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendOfficialWelcomeEmail } from "@/lib/mailer";
 import { PUROK_LABELS } from "@/lib/purok";
+import { emitInvalidate } from "@/lib/realtime/emit";
+import { INVALIDATION_TOPICS } from "@/lib/query/keys";
 import { IDStatus, Purok, UserRoles } from "@/app/generated/prisma/enums";
 
 /** Roles an admin can assign when creating an official account. */
@@ -224,7 +226,9 @@ export async function createOfficial(
     console.error(`Failed to send welcome email to ${email}`, error);
   }
 
-  // Refresh the surfaces that read the account list / counts.
+  // Refresh the surfaces that read the account list / counts — live for any
+  // admin currently in the console, and via the path cache.
+  emitInvalidate(INVALIDATION_TOPICS.adminUsers, { toOfficials: true });
   revalidatePath("/admin");
   revalidatePath("/admin/officials");
   revalidatePath("/admin/residents");
@@ -274,6 +278,10 @@ export async function reviewResident(input: {
     return { ok: false, error: "Something went wrong. Please try again." };
   }
 
+  // The resident sees the portal unlock (or the rejection notice) live: this
+  // re-runs their server-rendered overview + sidebar via router.refresh.
+  emitInvalidate(INVALIDATION_TOPICS.residentStatus, { toUser: input.userId });
+  emitInvalidate(INVALIDATION_TOPICS.adminUsers, { toOfficials: true });
   revalidatePath("/admin");
   revalidatePath("/admin/residents");
   revalidatePath("/admin/activity");

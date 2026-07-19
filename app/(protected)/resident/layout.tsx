@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { requireRole } from "@/lib/session";
 import { resolveHomePath } from "@/lib/roles";
-import { isProfileComplete } from "@/lib/profile";
+import { isProfileComplete, isResidencyVerified } from "@/lib/profile";
 import { getActionNeededCount } from "@/lib/documents-data";
 import { getResidentUnread } from "@/lib/chat-data";
 import { UserRoles } from "@/app/generated/prisma/enums";
@@ -39,9 +39,10 @@ export default async function ResidentLayout({
     u.name?.trim() ||
     u.email;
 
-  const [actionNeeded, messagesUnread] = await Promise.all([
+  const [actionNeeded, messagesUnread, verified] = await Promise.all([
     getActionNeededCount(u.id),
     getResidentUnread(u.id),
+    isResidencyVerified(u.id),
   ]);
 
   return (
@@ -49,6 +50,7 @@ export default async function ResidentLayout({
       user={{ id: u.id, name, initials: initialsOf(name), image: u.image }}
       actionNeeded={actionNeeded}
       messagesUnread={messagesUnread}
+      verified={verified}
     >
       {children}
     </ResidentShell>

@@ -9,6 +9,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
+import { SocketProvider } from "@/components/realtime/socket-provider";
+import { RealtimeInvalidator } from "@/components/realtime/realtime-invalidator";
 import { CaptainSidebar } from "./captain-sidebar";
 
 export type CaptainUser = {
@@ -31,6 +33,8 @@ export function CaptainShell({
 }) {
   return (
     <TooltipProvider delayDuration={0}>
+      <SocketProvider>
+      <RealtimeInvalidator />
       <SidebarProvider>
         <CaptainSidebar
           user={user}
@@ -55,6 +59,7 @@ export function CaptainShell({
         </SidebarInset>
         <Toaster position="top-center" richColors />
       </SidebarProvider>
+      </SocketProvider>
     </TooltipProvider>
   );
 }

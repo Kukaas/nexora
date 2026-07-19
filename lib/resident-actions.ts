@@ -7,6 +7,8 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteCloudinaryImage, uploadImage } from "@/lib/cloudinary";
+import { emitInvalidate } from "@/lib/realtime/emit";
+import { INVALIDATION_TOPICS } from "@/lib/query/keys";
 import { IDStatus, IDType, Purok } from "@/app/generated/prisma/enums";
 
 const ID_TYPE_VALUES = Object.values(IDType) as [IDType, ...IDType[]];
@@ -134,6 +136,8 @@ export async function completeResidentSetup(
       });
     });
 
+    // A newly-completed profile shows up in the admin's residents list.
+    emitInvalidate(INVALIDATION_TOPICS.adminUsers, { toOfficials: true });
     return { ok: true };
   } catch (error) {
     // Unique constraint on [type, number]: this ID is already registered.
@@ -230,6 +234,10 @@ export async function resubmitResidentId(
     }
   }
 
+  emitInvalidate(INVALIDATION_TOPICS.residentStatus, {
+    toUser: session.user.id,
+  });
+  emitInvalidate(INVALIDATION_TOPICS.adminUsers, { toOfficials: true });
   revalidatePath(`/resident/${session.user.id}`);
   revalidatePath("/admin");
   revalidatePath("/admin/residents");
@@ -396,6 +404,15 @@ export async function updateResidentProfile(
     await deleteCloudinaryImage(oldAvatar);
   }
 
+  // A name change that reverifies flips the resident back to pending, which
+  // gates their portal — refresh their server-rendered overview + sidebar.
+  if (reverify) {
+    emitInvalidate(INVALIDATION_TOPICS.residentStatus, {
+      toUser: session.user.id,
+    });
+  }
+  // Name/purok/photo edits change how the resident appears in the admin list.
+  emitInvalidate(INVALIDATION_TOPICS.adminUsers, { toOfficials: true });
   revalidatePath(`/resident/${session.user.id}`);
   revalidatePath(`/resident/${session.user.id}/profile`);
   revalidatePath("/admin/residents");
@@ -476,6 +493,10 @@ export async function changeResidentId(
     }
   }
 
+  emitInvalidate(INVALIDATION_TOPICS.residentStatus, {
+    toUser: session.user.id,
+  });
+  emitInvalidate(INVALIDATION_TOPICS.adminUsers, { toOfficials: true });
   revalidatePath(`/resident/${session.user.id}`);
   revalidatePath(`/resident/${session.user.id}/profile`);
   revalidatePath("/admin/residents");

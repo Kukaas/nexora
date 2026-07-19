@@ -31,6 +31,12 @@ export interface ServerToClientEvents {
     message: ChatMessageDTO;
   }) => void;
   "inbox:bump": (payload: { conversationId: string }) => void;
+  /**
+   * "Some cached dataset changed — refetch it." `topic` names the dataset (see
+   * lib/query/keys.ts); the client maps it to a React Query key and invalidates.
+   * Scoped by the room it's emitted to (a user's own room, or "officials").
+   */
+  "data:invalidate": (payload: { topic: string }) => void;
   typing: (payload: {
     conversationId: string;
     userId: string;

@@ -7,6 +7,7 @@ import {
   FileText,
   Landmark,
   LayoutDashboard,
+  Lock,
   Megaphone,
   MessagesSquare,
   UserRound,
@@ -39,10 +40,14 @@ export function ResidentSidebar({
   user,
   actionNeeded,
   messagesUnread,
+  verified,
 }: {
   user: ResidentUser;
   actionNeeded: number;
   messagesUnread: boolean;
+  /** When false, the "Request a document" item is locked until an official
+   * approves the resident's ID. */
+  verified: boolean;
 }) {
   const pathname = usePathname();
   const { setOpenMobile, isMobile } = useSidebar();
@@ -152,19 +157,35 @@ export function ResidentSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={
-                    pathname === `${home}/request` ||
-                    pathname.startsWith(`${home}/request/`)
-                  }
-                  tooltip="Request a document"
-                >
-                  <Link href={`${home}/request`} onClick={closeOnMobile}>
+                {verified ? (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={
+                      pathname === `${home}/request` ||
+                      pathname.startsWith(`${home}/request/`)
+                    }
+                    tooltip="Request a document"
+                  >
+                    <Link href={`${home}/request`} onClick={closeOnMobile}>
+                      <FilePlus2 />
+                      <span>Request a document</span>
+                    </Link>
+                  </SidebarMenuButton>
+                ) : (
+                  // Locked until an official approves the resident's ID. Rendered
+                  // as a disabled button (not a link) so it can't be navigated to,
+                  // with a tooltip explaining why.
+                  <SidebarMenuButton
+                    disabled
+                    aria-disabled
+                    tooltip="Verify your ID first to request documents"
+                    className="cursor-not-allowed"
+                  >
                     <FilePlus2 />
                     <span>Request a document</span>
-                  </Link>
-                </SidebarMenuButton>
+                    <Lock className="ml-auto size-3.5 text-muted-foreground" />
+                  </SidebarMenuButton>
+                )}
               </SidebarMenuItem>
 
               <SidebarMenuItem>
