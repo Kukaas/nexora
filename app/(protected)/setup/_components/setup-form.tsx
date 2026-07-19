@@ -420,13 +420,8 @@ export function SetupForm({ email }: { email: string }) {
                   toast.error("Upload didn't finish. Please try again.")
                 }
               />
-              {errors.idBack ? (
+              {errors.idBack && (
                 <FieldError>{errors.idBack.message}</FieldError>
-              ) : (
-                <FieldDescription>
-                  Use clear, well-lit photos of both sides. JPG or PNG, up to
-                  10 MB each.
-                </FieldDescription>
               )}
             </Field>
           </FieldSet>

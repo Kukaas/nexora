@@ -116,38 +116,40 @@ export function IdPhotoUpload({
           </div>
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed bg-input/30 px-4 py-6 text-center">
-          <span className="flex size-10 items-center justify-center rounded-full bg-accent text-accent-foreground">
-            {uploading ? <Spinner /> : <Camera className="size-5" aria-hidden />}
+        <div className="flex flex-col items-center gap-2.5 rounded-2xl border border-dashed bg-input/30 px-3 py-4 text-center sm:px-4 sm:py-5">
+          <span className="flex size-9 items-center justify-center rounded-full bg-accent text-accent-foreground">
+            {uploading ? <Spinner /> : <Camera className="size-4.5" aria-hidden />}
           </span>
           <div className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-foreground">
               {uploading ? "Uploading photo…" : emptyLabel}
             </span>
             <span className="text-xs text-muted-foreground">
-              Take a photo or choose an image from your device
+              Use a clear, well-lit photo. JPG or PNG, up to 10 MB.
             </span>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:flex-row">
+          <div className="grid w-full grid-cols-2 gap-2">
             <Button
               type="button"
+              size="sm"
               onClick={takePhoto}
               disabled={uploadDisabled}
               aria-busy={uploading}
-              className="flex-1"
+              className="w-full"
             >
               <Camera className="size-4" aria-hidden />
-              Take a photo
+              Take photo
             </Button>
             <Button
               type="button"
+              size="sm"
               variant="outline"
               onClick={chooseFile}
               disabled={uploadDisabled}
-              className="flex-1"
+              className="w-full"
             >
               <ImageUp className="size-4" aria-hidden />
-              Choose from files
+              Upload
             </Button>
           </div>
         </div>
