@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, ImageUp, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Spinner } from "@/components/ui/spinner";
@@ -29,10 +29,16 @@ export function AvatarUpload({
   onError: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const busy = disabled || uploading;
 
+  const takePhoto = () => cameraRef.current?.click();
   const chooseFile = () => fileRef.current?.click();
+
+  const pillClass = cn(
+    "inline-flex h-9 items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium text-foreground shadow-sm transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/40 disabled:opacity-50",
+  );
 
   const upload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -77,18 +83,28 @@ export function AvatarUpload({
       </div>
 
       <div className="flex flex-col items-start gap-1.5">
-        <button
-          type="button"
-          onClick={chooseFile}
-          disabled={busy}
-          aria-busy={uploading}
-          className={cn(
-            "inline-flex h-9 items-center gap-2 rounded-full border border-border bg-background px-4 text-sm font-medium text-foreground shadow-sm transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/40 disabled:opacity-50",
-          )}
-        >
-          <Camera className="size-4" aria-hidden />
-          {value ? "Change photo" : "Add photo"}
-        </button>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={takePhoto}
+            disabled={busy}
+            aria-busy={uploading}
+            className={pillClass}
+          >
+            <Camera className="size-4" aria-hidden />
+            Take a photo
+          </button>
+          <button
+            type="button"
+            onClick={chooseFile}
+            disabled={busy}
+            aria-busy={uploading}
+            className={pillClass}
+          >
+            <ImageUp className="size-4" aria-hidden />
+            {value ? "Change" : "Upload"}
+          </button>
+        </div>
         {value && (
           <button
             type="button"
@@ -103,6 +119,18 @@ export function AvatarUpload({
         <span className="text-xs text-muted-foreground">JPG or PNG, up to 5 MB.</span>
       </div>
 
+      {/* Front camera on phones (a selfie for the profile photo); on desktop
+          `capture` is ignored and this opens a file dialog. */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="user"
+        className="sr-only"
+        disabled={busy}
+        onChange={upload}
+      />
+      {/* Gallery / file manager — no capture, so it never forces the camera. */}
       <input
         ref={fileRef}
         type="file"

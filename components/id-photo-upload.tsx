@@ -1,17 +1,23 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, CheckCircle2, RefreshCw } from "lucide-react";
+import { Camera, CheckCircle2, ImageUp, RefreshCw } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { uploadResidentIdImage } from "@/lib/resident-actions";
 
 const MAX_ID_IMAGE_BYTES = 10 * 1024 * 1024;
 
 /**
- * Native device/file-manager image picker shared by resident setup and ID
- * resubmission. The selected file is sent to an authenticated Server Action,
- * which uploads it to the private application-owned Cloudinary folder.
+ * ID image picker shared by resident setup and ID resubmission. It offers two
+ * explicit choices instead of leaning on the OS file dialog (whose "camera vs
+ * gallery" prompt is inconsistent across devices): a "Take a photo" button
+ * backed by a `capture="environment"` input (opens the rear camera on phones,
+ * falls back to a file dialog on desktop) and a "Choose from files" button
+ * backed by a plain image input. Either way the selected file is sent to an
+ * authenticated Server Action that uploads it to the private, app-owned
+ * Cloudinary folder.
  */
 export function IdPhotoUpload({
   value,
@@ -31,9 +37,11 @@ export function IdPhotoUpload({
   alt?: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const uploadDisabled = disabled || uploading;
 
+  const takePhoto = () => cameraRef.current?.click();
   const chooseFile = () => fileRef.current?.click();
 
   const upload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,47 +82,88 @@ export function IdPhotoUpload({
             alt={alt}
             className="size-16 shrink-0 rounded-xl object-cover ring-1 ring-foreground/10"
           />
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
               <CheckCircle2 className="size-4 text-primary" aria-hidden />
               Photo added
             </span>
-            <button
-              type="button"
-              onClick={chooseFile}
-              disabled={uploadDisabled}
-              aria-busy={uploading}
-              className="flex w-fit items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-primary hover:underline focus-visible:text-primary disabled:opacity-50"
-            >
-              {uploading ? (
-                <Spinner className="size-3.5" />
-              ) : (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={takePhoto}
+                disabled={uploadDisabled}
+                aria-busy={uploading}
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-primary hover:underline focus-visible:text-primary disabled:opacity-50"
+              >
+                {uploading ? (
+                  <Spinner className="size-3.5" />
+                ) : (
+                  <Camera className="size-3.5" aria-hidden />
+                )}
+                {uploading ? "Uploading…" : "Retake"}
+              </button>
+              <button
+                type="button"
+                onClick={chooseFile}
+                disabled={uploadDisabled}
+                aria-busy={uploading}
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-primary hover:underline focus-visible:text-primary disabled:opacity-50"
+              >
                 <RefreshCw className="size-3.5" aria-hidden />
-              )}
-              {uploading ? "Uploading…" : "Replace photo"}
-            </button>
+                Replace
+              </button>
+            </div>
           </div>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={chooseFile}
-          disabled={uploadDisabled}
-          aria-busy={uploading}
-          className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed bg-input/30 px-4 py-8 text-center transition-colors hover:border-primary/40 hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/30 outline-none disabled:opacity-50"
-        >
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed bg-input/30 px-4 py-6 text-center">
           <span className="flex size-10 items-center justify-center rounded-full bg-accent text-accent-foreground">
             {uploading ? <Spinner /> : <Camera className="size-5" aria-hidden />}
           </span>
-          <span className="text-sm font-medium text-foreground">
-            {uploading ? "Uploading photo…" : emptyLabel}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            Select an image from your device
-          </span>
-        </button>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-foreground">
+              {uploading ? "Uploading photo…" : emptyLabel}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Take a photo or choose an image from your device
+            </span>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              onClick={takePhoto}
+              disabled={uploadDisabled}
+              aria-busy={uploading}
+              className="flex-1"
+            >
+              <Camera className="size-4" aria-hidden />
+              Take a photo
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={chooseFile}
+              disabled={uploadDisabled}
+              className="flex-1"
+            >
+              <ImageUp className="size-4" aria-hidden />
+              Choose from files
+            </Button>
+          </div>
+        </div>
       )}
 
+      {/* Rear camera on phones; ignored on desktop, where it opens a file dialog. */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        disabled={uploadDisabled}
+        onChange={upload}
+      />
+      {/* Gallery / file manager — no capture, so it never forces the camera. */}
       <input
         ref={fileRef}
         type="file"
