@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -75,7 +74,6 @@ const setupSchema = z.object({
 type SetupValues = z.infer<typeof setupSchema>;
 
 export function SetupForm({ email }: { email: string }) {
-  const router = useRouter();
   const ids = {
     firstName: useId(),
     middleName: useId(),
@@ -136,8 +134,12 @@ export function SetupForm({ email }: { email: string }) {
       return;
     }
     toast.success("Profile submitted. The barangay will verify your ID.");
-    router.push("/resident");
-    router.refresh();
+    // Full-page navigation (not router.push): finishing setup flips the /setup
+    // gate, but Next's client Router Cache can still hold the pre-setup redirect
+    // back to /setup and bounce the resident right back — which looks like "it
+    // didn't redirect". A hard navigation forces a fresh server evaluation with
+    // the now-saved profileCompletedAt, landing them on their dashboard.
+    window.location.assign("/resident");
   };
 
   return (
