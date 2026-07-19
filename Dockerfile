@@ -36,6 +36,11 @@ FROM base AS runner
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=3000
+# `bun run start` boots the server through tsx, which hooks Node's module loader
+# and therefore needs a real `node` binary — the bun-slim image has none. Copy
+# Node 22 in from the official image (same Debian bookworm base) so tsx runs
+# under Node, matching the environment the app was validated on.
+COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
 # Bring in the source first, then overlay the built artifacts and generated
 # client so they win over anything stale in the context.
 COPY . .

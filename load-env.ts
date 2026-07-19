@@ -9,3 +9,4 @@ import { loadEnvConfig } from "@next/env";
 
 const dev = !process.argv.includes("--prod");
 loadEnvConfig(process.cwd(), dev);
+    
