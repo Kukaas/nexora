@@ -1,0 +1,47 @@
+# Nexora on a VPS: the app container (custom Node + socket.io server) plus a
+# bundled Postgres. To use a managed database (e.g. Neon) instead, comment out
+# the `db` service + its `depends_on`, and set DATABASE_URL in .env to the Neon
+# connection string (the `environment` override below wins over .env, so remove
+# it too).
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nexora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nexora}
+      POSTGRES_DB: ${POSTGRES_DB:-nexora}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexora} -d ${POSTGRES_DB:-nexora}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Not published to the host by default; only the app reaches it over the
+    # compose network. Uncomment to connect from the host for migrations/seeding.
+    # ports:
+    #   - "5432:5432"
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # Loads SMTP, Cloudinary, Google, BETTER_AUTH_* etc. from .env on the host.
+    env_file:
+      - .env
+    # These override whatever is in .env so the container talks to the compose
+    # Postgres and binds on all interfaces. Remove DATABASE_URL to use Neon.
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-nexora}:${POSTGRES_PASSWORD:-nexora}@db:5432/${POSTGRES_DB:-nexora}?schema=public
+      HOST: 0.0.0.0
+      PORT: "3000"
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

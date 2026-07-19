@@ -1,0 +1,29 @@
+# Keep the build context small and the image reproducible. node_modules and the
+# Prisma client are (re)installed/generated inside the image; .env stays on the
+# host and is injected at runtime by docker-compose.
+.git
+.gitignore
+node_modules
+.next
+out
+build
+app/generated
+
+# Local env and secrets — provided at runtime, never baked into the image.
+.env
+.env.*
+!.env.example
+
+# Docker + tooling artifacts
+Dockerfile
+.dockerignore
+docker-compose*.yml
+*.tsbuildinfo
+next-env.d.ts
+
+# Editor / OS noise
+.vscode
+.idea
+.DS_Store
+npm-debug.log*
+.vercel
