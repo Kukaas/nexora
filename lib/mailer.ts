@@ -6,7 +6,7 @@ const user = process.env.SMTP_USER;
 const pass = process.env.SMTP_PASS;
 
 export const EMAIL_FROM =
-  process.env.EMAIL_FROM ?? "Nexora <no-reply@nexora.local>";
+  process.env.EMAIL_FROM ?? "chestermaligaso29@gmail.com";
 
 /**
  * Shared SMTP transport. Reads generic SMTP_* env vars so it works with any
