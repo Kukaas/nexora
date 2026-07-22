@@ -7,6 +7,7 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { mergeHtml } from "@/lib/tiptap/merge-html";
 import { mmToPx, paperLayout } from "@/lib/documents";
+import { QrBlock, DEFAULT_QR_ATTRS, type FloatingQrAttrs } from "@/lib/tiptap/floating-qr";
 
 /**
  * Renders a request's document ready to print: the type's designed layout with
@@ -20,19 +21,51 @@ export function DocumentPrintView({
   backHref,
   paperSize,
   orientation,
+  verifyUrl,
 }: {
   templateHtml: string;
   context: Record<string, string>;
   backHref: string;
   paperSize: string;
   orientation: string;
+  /** Absolute URL the QR encodes; scanning it opens the public verify page. */
+  verifyUrl?: string;
 }) {
   // mergeHtml uses DOMParser (browser-only), so resolve the placeholders after
   // mount. On the server / first client render the sheet is empty (matching
   // markup, no hydration mismatch); the merged document fills in on the client.
+  //
+  // The layout carries the verification QR as an empty `[data-floating-qr]`
+  // placeholder holding only its position. Pull that position out, strip the
+  // placeholder, and render the request's real QR there (below). The QR is
+  // optional — a layout without one prints no QR (qrPos stays null).
   const [merged, setMerged] = useState("");
+  const [qrPos, setQrPos] = useState<FloatingQrAttrs | null>(null);
   useEffect(() => {
-    setMerged(mergeHtml(templateHtml, context));
+    const html = mergeHtml(templateHtml, context);
+    if (typeof DOMParser === "undefined") {
+      setMerged(html);
+      return;
+    }
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const placeholder = doc.querySelector("[data-floating-qr]");
+    if (placeholder) {
+      const style = placeholder.getAttribute("style") ?? "";
+      const pick = (prop: string) => {
+        // `-?` matters: an edge-placed QR stores negative percentages.
+        const m = style.match(new RegExp(`${prop}:\\s*(-?[\\d.]+)%`));
+        return m ? parseFloat(m[1]) : null;
+      };
+      setQrPos({
+        x: pick("left") ?? DEFAULT_QR_ATTRS.x,
+        y: pick("top") ?? DEFAULT_QR_ATTRS.y,
+        width: pick("width") ?? DEFAULT_QR_ATTRS.width,
+      });
+      placeholder.remove();
+    } else {
+      setQrPos(null);
+    }
+    setMerged(doc.body.innerHTML);
   }, [templateHtml, context]);
 
   const layout = paperLayout(paperSize, orientation);
@@ -108,6 +141,37 @@ export function DocumentPrintView({
                 className="nx-doc-editor"
                 dangerouslySetInnerHTML={{ __html: merged }}
               />
+
+              {/* The verification QR, rendered where the secretary placed it.
+                  Its x/y/width are percentages of the *content box* (page minus
+                  the sheet padding) — the same box the designer's floating
+                  elements resolve against. This overlay reproduces that box
+                  (globals.css `.nx-doc` padding: 48px 56px) and is itself an
+                  absolute containing block, so the QR's percentages land exactly
+                  where they were designed. */}
+              {verifyUrl && qrPos && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 48,
+                    bottom: 48,
+                    left: 56,
+                    right: 56,
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: `${qrPos.x}%`,
+                      top: `${qrPos.y}%`,
+                      width: `${qrPos.width}%`,
+                      zIndex: 3,
+                    }}
+                  >
+                    <QrBlock value={verifyUrl} />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

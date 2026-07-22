@@ -7,7 +7,8 @@ import {
   getDocumentRequestById,
   getDocumentTypeById,
 } from "@/lib/secretary-data";
-import { buildMergeContext } from "@/lib/documents";
+import { buildMergeContext, verifyUrl } from "@/lib/documents";
+import { ensureVerificationCode } from "@/lib/verification";
 import { Button } from "@/components/ui/button";
 import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
 import {
@@ -81,6 +82,10 @@ export default async function PrintRequestPage({
     );
   }
 
+  // Every printed document carries a QR that verifies it as genuine. Older
+  // requests predating this feature get a code the first time they're printed.
+  const code = request.verificationCode ?? (await ensureVerificationCode(request.id));
+
   return (
     <DocumentPrintView
       templateHtml={type.template}
@@ -88,6 +93,7 @@ export default async function PrintRequestPage({
       backHref={backHref}
       paperSize={type.paperSize}
       orientation={type.orientation}
+      verifyUrl={verifyUrl(code)}
     />
   );
 }

@@ -101,6 +101,7 @@ function toMyRequestDTO(
   return {
     id: row.id,
     referenceNumber: row.referenceNumber,
+    verificationCode: row.verificationCode,
     documentTypeId: row.documentTypeId,
     documentName: row.documentName,
     fee: Number(row.fee),

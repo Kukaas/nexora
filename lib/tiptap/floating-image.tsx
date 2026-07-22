@@ -67,7 +67,9 @@ const num = (value: string | null, fallback: number) => {
 };
 
 const percentOrNull = (style: string, prop: string): number | null => {
-  const m = style.match(new RegExp(`${prop}:\\s*([\\d.]+)%`));
+  // `-?` so an element dragged to a top/left edge (negative %) parses back
+  // instead of snapping to its default position on reload.
+  const m = style.match(new RegExp(`${prop}:\\s*(-?[\\d.]+)%`));
   return m ? parseFloat(m[1]) : null;
 };
 

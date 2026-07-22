@@ -104,6 +104,7 @@ export async function getDocumentRequests(
   return rows.map((row) => ({
     id: row.id,
     referenceNumber: row.referenceNumber,
+    verificationCode: row.verificationCode,
     documentTypeId: row.documentTypeId,
     documentName: row.documentName,
     fee: Number(row.fee),
@@ -141,6 +142,7 @@ export async function getDocumentRequestById(
   return {
     id: row.id,
     referenceNumber: row.referenceNumber,
+    verificationCode: row.verificationCode,
     documentTypeId: row.documentTypeId,
     documentName: row.documentName,
     fee: Number(row.fee),

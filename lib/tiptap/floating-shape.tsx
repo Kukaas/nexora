@@ -97,7 +97,7 @@ export const FloatingShape = Node.create({
           const div = el as HTMLElement;
           const style = div.getAttribute("style") ?? "";
           const pick = (prop: string) =>
-            style.match(new RegExp(`${prop}:\\s*([\\d.]+)%`))?.[1] ?? null;
+            style.match(new RegExp(`${prop}:\\s*(-?[\\d.]+)%`))?.[1] ?? null;
           return {
             shape: (div.getAttribute("data-shape") as ShapeKind) ?? "rect",
             x: num(pick("left"), 12),

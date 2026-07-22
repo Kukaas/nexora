@@ -9,6 +9,7 @@ import { isResidencyVerified } from "@/lib/profile";
 import { deleteCloudinaryImage, uploadImage } from "@/lib/cloudinary";
 import { emitInvalidate } from "@/lib/realtime/emit";
 import { INVALIDATION_TOPICS } from "@/lib/query/keys";
+import { generateVerificationCode } from "@/lib/verification";
 import {
   DocumentRequestStatus,
   PaymentMethodType,
@@ -172,10 +173,12 @@ export async function submitDocumentRequest(
     user.email;
 
   const referenceNumber = await uniqueReference();
+  const verificationCode = await generateVerificationCode();
 
   await prisma.documentRequest.create({
     data: {
       referenceNumber,
+      verificationCode,
       documentTypeId: docType.id,
       documentName: docType.name,
       fee: docType.fee,

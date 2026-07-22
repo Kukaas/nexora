@@ -8,6 +8,7 @@ import { getSession } from "@/lib/session";
 import { hasAccess } from "@/lib/roles";
 import { emitInvalidate } from "@/lib/realtime/emit";
 import { INVALIDATION_TOPICS } from "@/lib/query/keys";
+import { generateVerificationCode } from "@/lib/verification";
 import {
   AnnouncementCategory,
   DocumentRequestStatus,
@@ -193,12 +194,14 @@ export async function createWalkInRequest(
   const requesterName = nameValue || "Walk-in resident";
 
   const referenceNumber = await uniqueReference();
+  const verificationCode = await generateVerificationCode();
 
   // Start the payment as CASH; the treasurer re-stamps the actual method (cash
   // or e-wallet paid at the desk) when they verify the payment.
   const created = await prisma.documentRequest.create({
     data: {
       referenceNumber,
+      verificationCode,
       documentTypeId: docType.id,
       documentName: docType.name,
       fee: docType.fee,

@@ -203,6 +203,12 @@ model DocumentRequest {
   id                               String           @id @default(uuid())
   referenceNumber                  String           @map("reference_number")
 
+  /// Unguessable public token for QR verification. Anyone holding the printed
+  /// document can scan its QR (which encodes /verify/<code>) to confirm the
+  /// document is genuine — the reference number is enumerable, this is not.
+  /// Nullable so it can be backfilled; new requests always get one at creation.
+  verificationCode                 String?          @unique @map("verification_code")
+
   documentTypeId                   String?          @map("document_type_id")
   documentType                     DocumentType?    @relation(fields: [documentTypeId], references: [id], onDelete: SetNull)
   documentName                     String           @map("document_name")

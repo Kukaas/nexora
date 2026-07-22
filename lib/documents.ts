@@ -4,6 +4,16 @@ import {
   PaymentMethodType,
   type Purok,
 } from "@/app/generated/prisma/enums";
+import { SITE_URL } from "@/lib/site";
+
+/**
+ * The public URL a document's QR encodes. Scanning it opens the verification
+ * page, which confirms the document is genuine. Absolute so the QR works on any
+ * device — set NEXT_PUBLIC_SITE_URL in production (see `@/lib/site`).
+ */
+export function verifyUrl(code: string): string {
+  return `${SITE_URL}/verify/${code}`;
+}
 
 /**
  * Client-safe document & announcement types and constants, shared by the server
@@ -82,6 +92,8 @@ export type DocumentTypeDTO = {
 export type DocumentRequestDTO = {
   id: string;
   referenceNumber: string;
+  /** Unguessable public token behind the document's QR; null until issued/backfilled. */
+  verificationCode: string | null;
   /** The catalog type this came from, or null if that type was deleted. */
   documentTypeId: string | null;
   documentName: string;

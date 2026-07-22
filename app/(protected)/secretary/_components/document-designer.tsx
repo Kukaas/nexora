@@ -45,6 +45,7 @@ import {
   ListOrdered,
   Minus,
   Pilcrow,
+  QrCode,
   Redo2,
   Shapes,
   Square,
@@ -100,6 +101,7 @@ import { DocumentKeymap } from "@/lib/tiptap/document-keymap";
 import { FloatingImage } from "@/lib/tiptap/floating-image";
 import { FloatingText } from "@/lib/tiptap/floating-text";
 import { FloatingShape, type ShapeKind } from "@/lib/tiptap/floating-shape";
+import { FloatingQr, DEFAULT_QR_ATTRS } from "@/lib/tiptap/floating-qr";
 import { ImageLibraryDialog } from "./image-library-dialog";
 
 /** Font stacks offered in the toolbar. Values are real CSS stacks so the print
@@ -136,6 +138,7 @@ const FLOATING_NODES = new Set([
   "floatingText",
   "floatingImage",
   "floatingShape",
+  "floatingQr",
 ]);
 
 /** Horizontal page padding of the sheet (globals.css `.nx-doc` → `padding … 56px`).
@@ -164,6 +167,17 @@ function currentFloating(
     }
   }
   return null;
+}
+
+/** Whether the document already contains a verification QR (at most one is
+ * allowed, so the Insert-QR control disables once it's present). */
+function docHasQr(editor: Editor): boolean {
+  let has = false;
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === "floatingQr") has = true;
+    return !has;
+  });
+  return has;
 }
 
 /** Nudge any pasted free-canvas element down-right a little so a duplicate lands
@@ -251,6 +265,7 @@ export function DocumentDesigner({
       FloatingImage,
       FloatingText,
       FloatingShape,
+      FloatingQr,
       DocumentKeymap,
       MergeField,
     ],
@@ -262,6 +277,39 @@ export function DocumentDesigner({
       transformPasted: offsetPastedFloats,
     },
   });
+
+  // Reconcile the QR on load: a document may carry at most one. Earlier builds
+  // auto-inserted a default QR, so a template can contain leftover duplicates
+  // (often one at the default bottom plus the one the secretary moved). Collapse
+  // them to a single QR, keeping a moved one over an untouched default. Never
+  // inserts — a document with no QR stays without one.
+  useEffect(() => {
+    if (!editor) return;
+    // Defer out of the effect body so the dispatch doesn't run a ProseMirror
+    // flushSync mid-render; re-reading the doc here also makes it idempotent
+    // under StrictMode's double-invoked effect.
+    queueMicrotask(() => {
+      if (editor.isDestroyed) return;
+      const qrs: { pos: number; node: PMNode }[] = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === "floatingQr") qrs.push({ pos, node });
+      });
+      if (qrs.length <= 1) return; // 0 or 1 — nothing to reconcile
+
+      const keep =
+        qrs.find(
+          (q) =>
+            q.node.attrs.x !== DEFAULT_QR_ATTRS.x ||
+            q.node.attrs.y !== DEFAULT_QR_ATTRS.y,
+        ) ?? qrs[0];
+      const tr = editor.state.tr;
+      // Delete from the end so earlier positions stay valid as we splice.
+      for (const q of qrs.slice().reverse()) {
+        if (q !== keep) tr.delete(q.pos, q.pos + q.node.nodeSize);
+      }
+      editor.view.dispatch(tr);
+    });
+  }, [editor]);
 
   const save = async () => {
     if (!editor) return;
@@ -284,7 +332,8 @@ export function DocumentDesigner({
     if (!editor) return;
 
     const target = event.target as HTMLElement;
-    if (target.closest(".nx-float-text, .nx-float-image, img, td, th")) return;
+    if (target.closest(".nx-float-text, .nx-float-image, .nx-float-qr, img, td, th"))
+      return;
 
     // Preserve the browser's normal double-click-to-select-word behavior. A
     // collapsed selection means the pointer landed on blank document space,
@@ -469,6 +518,7 @@ function Toolbar({
         orderedList: currentEditor.isActive("orderedList"),
         inTable: currentEditor.isActive("table"),
         floatingSelected: currentFloating(currentEditor) !== null,
+        hasQr: docHasQr(currentEditor),
         canUndo: currentEditor.can().undo(),
         canRedo: currentEditor.can().redo(),
       };
@@ -778,6 +828,24 @@ function Toolbar({
         <TableMenu editor={editor} inTable={toolbarState.inTable} />
         <ImageLibraryDialog editor={editor} initialAssets={mediaAssets} />
         <ShapesMenu editor={editor} />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Insert verification QR"
+              disabled={toolbarState.hasQr}
+              onClick={() => editor.chain().focus().setFloatingQr().run()}
+            >
+              <QrCode className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {toolbarState.hasQr
+              ? "Verification QR already added"
+              : "Insert verification QR"}
+          </TooltipContent>
+        </Tooltip>
       </Group>
 
       {/* Insert field: right-aligned on wide screens, wraps on narrow ones. */}

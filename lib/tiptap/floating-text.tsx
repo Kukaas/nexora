@@ -59,7 +59,7 @@ export const FloatingText = Node.create({
         getAttrs: (el) => {
           const style = (el as HTMLElement).getAttribute("style") ?? "";
           const pick = (prop: string) =>
-            style.match(new RegExp(`${prop}:\\s*([\\d.]+)%`))?.[1] ?? null;
+            style.match(new RegExp(`${prop}:\\s*(-?[\\d.]+)%`))?.[1] ?? null;
           return {
             x: num(pick("left"), 10),
             y: num(pick("top"), 10),
