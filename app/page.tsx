@@ -26,6 +26,13 @@ import {
   NexoraMark,
 } from "@/app/(auth)/_components/nexora-mark";
 import { SiteHeader } from "./_components/site-header";
+import {
+  JsonLd,
+  breadcrumbLd,
+  graph,
+  organizationLd,
+  websiteLd,
+} from "./_components/json-ld";
 
 export const metadata: Metadata = {
   title: "Barangay Libtangin | Online services on Nexora",
@@ -128,6 +135,9 @@ export default async function Home() {
 
   return (
     <>
+      <JsonLd
+        data={graph(organizationLd, websiteLd, breadcrumbLd([]))}
+      />
       <a
         href="#main"
         className="sr-only z-50 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:outline-none focus:ring-3 focus:ring-primary/40"
@@ -482,7 +492,10 @@ function ClearanceArtifact({ qrSvg }: { qrSvg: string }) {
     <div className="relative mx-auto w-full max-w-md lg:mr-0">
       {/* The clearance itself. */}
       <article className="nx-float relative rounded-4xl border border-border bg-card p-6 shadow-xl shadow-foreground/[0.06] ring-1 ring-foreground/5 sm:p-7">
+        {/* Above the fold and the largest glyph on the page — Next flags it as
+            the LCP, so load it eagerly instead of lazily. */}
         <NexoraGlyph
+          priority
           aria-hidden
           className="pointer-events-none absolute right-5 top-5 size-24 text-primary opacity-[0.06]"
         />

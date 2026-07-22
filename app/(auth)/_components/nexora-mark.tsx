@@ -19,9 +19,12 @@ const LOCKUP = { width: 864, height: 283 };
 
 export function NexoraGlyph({
   className,
+  priority,
   "aria-hidden": ariaHidden,
 }: {
   className?: string;
+  /** Set on above-the-fold instances so the LCP image loads eagerly. */
+  priority?: boolean;
   "aria-hidden"?: boolean;
 }) {
   return (
@@ -30,19 +33,28 @@ export function NexoraGlyph({
       alt=""
       width={GLYPH.width}
       height={GLYPH.height}
+      priority={priority}
       aria-hidden={ariaHidden ?? true}
       className={cn("object-contain", className)}
     />
   );
 }
 
-export function NexoraMark({ className }: { className?: string }) {
+export function NexoraMark({
+  className,
+  priority,
+}: {
+  className?: string;
+  /** Set on above-the-fold instances so the LCP image loads eagerly. */
+  priority?: boolean;
+}) {
   return (
     <Image
       src="/logo-with-text.png"
       alt="Nexora"
       width={LOCKUP.width}
       height={LOCKUP.height}
+      priority={priority}
       className={cn("h-9 w-auto object-contain", className)}
     />
   );
