@@ -4,7 +4,7 @@ import {
   PaymentMethodType,
   type Purok,
 } from "@/app/generated/prisma/enums";
-import { SITE_URL } from "@/lib/site";
+import { APP_TIME_ZONE, SITE_URL } from "@/lib/site";
 
 /**
  * The public URL a document's QR encodes. Scanning it opens the verification
@@ -401,6 +401,7 @@ export function formatFieldValue(field: {
         year: "numeric",
         month: "long",
         day: "numeric",
+        timeZone: APP_TIME_ZONE,
       });
     }
   }
@@ -501,6 +502,7 @@ function formatIssuedDate(iso: string | null): string {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: APP_TIME_ZONE,
   });
 }
 

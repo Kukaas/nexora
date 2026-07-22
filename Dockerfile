@@ -12,8 +12,10 @@ ENV NODE_ENV=production
 # Prisma's engines (used by generate/migrate) need OpenSSL on Debian slim.
 # curl is needed at runtime for the container healthcheck — the bun-slim image
 # ships neither curl nor wget, so the platform's default probe fails otherwise.
+# tzdata provides the zoneinfo database so the process TZ (Asia/Manila, set on
+# the runner) resolves for Date's local methods; without it TZ falls back to UTC.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl ca-certificates curl \
+    && apt-get install -y --no-install-recommends openssl ca-certificates curl tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 # ---- Dependencies ----------------------------------------------------------
@@ -35,9 +37,13 @@ RUN bun run build
 
 # ---- Runtime ---------------------------------------------------------------
 FROM base AS runner
+# Pin the barangay's local timezone so any server-side date logic/logs that
+# aren't explicitly formatted (UI formatters already pass Asia/Manila) still
+# default to local time. Stored timestamps stay UTC instants regardless.
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=3000
+    PORT=3000 \
+    TZ=Asia/Manila
 # `bun run start` boots the server through tsx, which hooks Node's module loader
 # and therefore needs a real `node` binary — the bun-slim image has none. Copy
 # Node 22 in from the official image (same Debian bookworm base) so tsx runs

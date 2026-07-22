@@ -10,6 +10,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
+import { APP_TIME_ZONE } from "@/lib/site";
 import { formatPeso } from "./captain-ui";
 
 /**
@@ -122,11 +123,13 @@ function bucketLabel(
     return new Intl.DateTimeFormat("en-PH", {
       month: "short",
       ...(spansYears ? { year: "2-digit" } : {}),
+      timeZone: APP_TIME_ZONE,
     }).format(d);
   }
   return new Intl.DateTimeFormat("en-PH", {
     month: "short",
     day: "numeric",
+    timeZone: APP_TIME_ZONE,
   }).format(d);
 }
 
@@ -176,6 +179,7 @@ const exportDate = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
+  timeZone: APP_TIME_ZONE,
 });
 
 /** `slug` → `barangay-slug-2026-07-16.csv`, downloaded on the spot. */

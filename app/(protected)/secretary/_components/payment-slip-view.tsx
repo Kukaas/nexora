@@ -5,6 +5,7 @@ import { ArrowLeft, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { BARANGAY, type DocumentRequestDTO } from "@/lib/documents";
+import { APP_TIME_ZONE } from "@/lib/site";
 
 const peso = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -31,6 +32,7 @@ export function PaymentSlipView({
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: APP_TIME_ZONE,
   });
 
   return (

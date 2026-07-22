@@ -5,6 +5,7 @@ import type { DateRange } from "react-day-picker";
 import { CalendarDays, Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { APP_TIME_ZONE } from "@/lib/site";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -36,6 +37,7 @@ const PRESETS: { value: DatePreset; label: string }[] = [
 const rangeLabel = new Intl.DateTimeFormat("en-PH", {
   month: "short",
   day: "numeric",
+  timeZone: APP_TIME_ZONE,
 });
 
 /** Inclusive [start, end] bounds in ms, with null meaning "unbounded". */

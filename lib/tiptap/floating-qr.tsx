@@ -36,9 +36,11 @@ export interface FloatingQrAttrs {
   width: number;
 }
 
-// A stand-in QR shown only in the designer. The real per-request code is filled
-// in at print time — this just lets the secretary see and place the mark.
+// Stand-ins shown only in the designer. The real per-request code and reference
+// number are filled in at print time — these just let the secretary see and
+// place the mark with a realistic-looking sample.
 const PREVIEW_VALUE = "https://verify.example/preview";
+const PREVIEW_REFERENCE = "BRGY-0000-00000";
 
 /** Default placement: lower-right of the page, a modest size. */
 export const DEFAULT_QR_ATTRS: FloatingQrAttrs = { x: 74, y: 83, width: 16 };
@@ -228,7 +230,7 @@ function FloatingQrView({
         outline: selected && editable ? "2px solid var(--primary)" : undefined,
       }}
     >
-      <QrBlock value={PREVIEW_VALUE} />
+      <QrBlock value={PREVIEW_VALUE} reference={PREVIEW_REFERENCE} />
 
       {/* Warn (in the designer only) when the QR is shrunk past the point a
           phone camera can reliably read it. */}
@@ -301,16 +303,19 @@ function FloatingQrView({
 }
 
 /**
- * The visible QR mark — a white card with the square QR and a caption. Shared
- * shape between the designer preview and the printed stamp so what the secretary
- * places is what prints. `value` is the sample URL in the designer and the
- * request's real verify URL at print.
+ * The visible QR mark — a white card with the square QR, a caption, and the
+ * document's reference number. Shared shape between the designer preview and the
+ * printed stamp so what the secretary places is what prints. `value` is the
+ * sample URL in the designer and the request's real verify URL at print;
+ * `reference` is the sample/real reference number shown under the QR.
  */
 export function QrBlock({
   value,
+  reference,
   onPointerDown,
 }: {
   value: string;
+  reference?: string;
   onPointerDown?: (event: React.PointerEvent) => void;
 }) {
   return (
@@ -346,6 +351,22 @@ export function QrBlock({
       >
         Scan to verify
       </span>
+      {reference && (
+        <span
+          style={{
+            fontFamily:
+              "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+            fontSize: "0.62em",
+            fontWeight: 700,
+            lineHeight: 1.1,
+            letterSpacing: "0.02em",
+            textAlign: "center",
+            wordBreak: "break-all",
+          }}
+        >
+          {reference}
+        </span>
+      )}
     </div>
   );
 }

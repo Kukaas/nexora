@@ -3,8 +3,9 @@ import Link from "next/link";
 import { BadgeCheck, ShieldAlert, ArrowLeft } from "lucide-react";
 
 import { getVerifiedDocument } from "@/lib/verification";
-import { BARANGAY, SITE_NAME } from "@/lib/site";
+import { APP_TIME_ZONE, BARANGAY, SITE_NAME } from "@/lib/site";
 import { Badge } from "@/components/ui/badge";
+import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
 
 // A scanned QR points here. It should never be indexed — the page is meant to
 // be reached only by scanning a specific document's code.
@@ -21,6 +22,7 @@ function formatIssued(iso: string | null): string {
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: APP_TIME_ZONE,
   });
 }
 
@@ -41,12 +43,17 @@ export default async function VerifyDocumentPage({
 
   return (
     <main className="mx-auto flex min-h-svh w-full max-w-xl flex-col justify-center gap-6 px-4 py-12">
-      <div className="text-center">
-        <p className="text-sm font-medium text-muted-foreground">{SITE_NAME}</p>
-        <h1 className="text-lg font-semibold">{BARANGAY.name}</h1>
-        <p className="text-sm text-muted-foreground">
-          {BARANGAY.locality}, {BARANGAY.province}
-        </p>
+      <div className="flex flex-col items-center gap-3 text-center">
+        <NexoraGlyph className="h-14 w-auto" priority />
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium text-muted-foreground">
+            {SITE_NAME}
+          </p>
+          <h1 className="text-lg font-semibold">{BARANGAY.name}</h1>
+          <p className="text-sm text-muted-foreground">
+            {BARANGAY.locality}, {BARANGAY.province}
+          </p>
+        </div>
       </div>
 
       {doc ? (

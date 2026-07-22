@@ -15,6 +15,7 @@ import {
   PaymentMethodType,
 } from "@/app/generated/prisma/enums";
 import { METHOD_LABELS } from "@/lib/payments";
+import { APP_TIME_ZONE } from "@/lib/site";
 
 const peso = new Intl.NumberFormat("en-PH", {
   style: "currency",
@@ -33,6 +34,7 @@ const dateTime = new Intl.DateTimeFormat("en-PH", {
   year: "numeric",
   hour: "numeric",
   minute: "2-digit",
+  timeZone: APP_TIME_ZONE,
 });
 
 export function formatDateTime(iso: string): string {
@@ -43,6 +45,7 @@ const dateOnly = new Intl.DateTimeFormat("en-PH", {
   month: "short",
   day: "numeric",
   year: "numeric",
+  timeZone: APP_TIME_ZONE,
 });
 
 export function formatDate(iso: string): string {

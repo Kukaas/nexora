@@ -168,7 +168,10 @@ export function DocumentPrintView({
                       zIndex: 3,
                     }}
                   >
-                    <QrBlock value={verifyUrl} />
+                    <QrBlock
+                      value={verifyUrl}
+                      reference={context.referenceNumber}
+                    />
                   </div>
                 </div>
               )}

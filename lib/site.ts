@@ -15,6 +15,14 @@ export const SITE_URL = (
 
 export const SITE_NAME = "Nexora";
 
+/**
+ * The barangay's local timezone. Timestamps are stored as UTC instants in the
+ * database; every date/time shown to a user must be formatted in this zone so it
+ * reads as local time regardless of where the server (or the viewer's browser)
+ * runs. Pass it as `timeZone` to every `Intl.DateTimeFormat` / `toLocale*` call.
+ */
+export const APP_TIME_ZONE = "Asia/Manila";
+
 export const BARANGAY = {
   name: "Barangay Libtangin",
   locality: "Gasan",
