@@ -10,8 +10,10 @@ FROM oven/bun:1.3.13-slim AS base
 WORKDIR /app
 ENV NODE_ENV=production
 # Prisma's engines (used by generate/migrate) need OpenSSL on Debian slim.
+# curl is needed at runtime for the container healthcheck — the bun-slim image
+# ships neither curl nor wget, so the platform's default probe fails otherwise.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl ca-certificates \
+    && apt-get install -y --no-install-recommends openssl ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
 # ---- Dependencies ----------------------------------------------------------
@@ -50,6 +52,10 @@ COPY --from=build /app/app/generated ./app/generated
 RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 3000
+# Probe the app's health endpoint from inside the container. --start-period gives
+# migrate/seed time to finish before failures count against the container.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS "http://127.0.0.1:${PORT}/api/health" || exit 1
 # The entrypoint runs generate → migrate deploy → seed:admin → seed:documents,
 # then execs the CMD below. `start` = tsx server.ts --prod → boots Next (from
 # .next) + the socket.io realtime layer.
