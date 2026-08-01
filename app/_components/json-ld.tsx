@@ -1,4 +1,12 @@
-import { BARANGAY, CREATORS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
+import {
+  BARANGAY,
+  CREATORS,
+  SITE_ALTERNATE_NAMES,
+  SITE_DESCRIPTION,
+  SITE_DISPLAY_NAME,
+  SITE_NAME,
+  SITE_URL,
+} from "@/lib/site";
 
 /**
  * Emits a JSON-LD <script> for search engines. Server component, so the graph
@@ -56,8 +64,9 @@ export const organizationLd: Record<string, unknown> = {
 export const websiteLd: Record<string, unknown> = {
   "@type": "WebSite",
   "@id": WEBSITE_ID,
-  name: SITE_NAME,
-  alternateName: "Barangay Libtangin Online Services",
+  // Drives the site name Google prints above the URL in a search result.
+  name: SITE_DISPLAY_NAME,
+  alternateName: SITE_ALTERNATE_NAMES,
   url: SITE_URL,
   description: SITE_DESCRIPTION,
   inLanguage: ["en-PH", "fil-PH"],

@@ -10,10 +10,34 @@
 export const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL ??
   process.env.NEXT_PUBLIC_BETTER_AUTH_URL ??
-  "https://nexora.ph"
+  "https://nexora.kukaass.app"
 ).replace(/\/$/, "");
 
 export const SITE_NAME = "Nexora";
+
+/**
+ * The name Google shows above the URL in a search result (its "site name"
+ * feature). Kept separate from SITE_NAME because that one also feeds the title
+ * template, breadcrumbs, and applicationName, where the longer form would read
+ * badly ("Sign in | Nexora | Barangay Libtangin").
+ *
+ * Only two signals matter here, and Google wants them consistent: the `name` of
+ * the WebSite node in the homepage JSON-LD (highest priority) and og:site_name.
+ * Google may still decline a name this long and fall back to the domain — see
+ * SITE_ALTERNATE_NAMES.
+ */
+export const SITE_DISPLAY_NAME = "Nexora | Barangay Libtangin";
+
+/**
+ * Fallbacks Google can pick from if it rejects SITE_DISPLAY_NAME, ordered from
+ * most to least preferred. Documented as the hedge against an unwanted
+ * auto-generated site name (which is why "kukaass.app" showed up).
+ */
+export const SITE_ALTERNATE_NAMES = [
+  "Nexora",
+  "Barangay Libtangin",
+  "Barangay Libtangin Online Services",
+];
 
 /**
  * The barangay's local timezone. Timestamps are stored as UTC instants in the

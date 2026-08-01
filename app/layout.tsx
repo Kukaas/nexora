@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   CREATORS,
   SITE_DESCRIPTION,
+  SITE_DISPLAY_NAME,
   SITE_KEYWORDS,
   SITE_NAME,
   SITE_URL,
@@ -44,7 +45,9 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: "website",
-    siteName: SITE_NAME,
+    // Google's second-choice source for the site name, after the WebSite
+    // JSON-LD. Must match it, or the signals compete.
+    siteName: SITE_DISPLAY_NAME,
     url: SITE_URL,
     title: "Barangay Libtangin | Online services on Nexora",
     description: SITE_DESCRIPTION,
