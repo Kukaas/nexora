@@ -17,26 +17,30 @@ export const SITE_NAME = "Nexora";
 
 /**
  * The name Google shows above the URL in a search result (its "site name"
- * feature). Kept separate from SITE_NAME because that one also feeds the title
- * template, breadcrumbs, and applicationName, where the longer form would read
- * badly ("Sign in | Nexora | Barangay Libtangin").
+ * feature). It must be the short name the site is *known by* — not a tagline
+ * and not a title. A name built out of two clauses joined by a pipe reads as a
+ * page title, so Google declines it and falls back to the domain, which for a
+ * subdomain means the parent's name ("kukaass.app").
  *
- * Only two signals matter here, and Google wants them consistent: the `name` of
- * the WebSite node in the homepage JSON-LD (highest priority) and og:site_name.
- * Google may still decline a name this long and fall back to the domain — see
- * SITE_ALTERNATE_NAMES.
+ * Google ranks three signals, and wants all of them saying the same thing:
+ * the `name` of the WebSite node in the homepage JSON-LD (highest), then
+ * og:site_name, then the homepage <title> and headings. Every one of those must
+ * read "Nexora" — see the homepage's `title.absolute`, which has to stay out of
+ * the `%s | Nexora` template or the title contradicts the other two.
  */
-export const SITE_DISPLAY_NAME = "Nexora | Barangay Libtangin";
+export const SITE_DISPLAY_NAME = SITE_NAME;
 
 /**
- * Fallbacks Google can pick from if it rejects SITE_DISPLAY_NAME, ordered from
- * most to least preferred. Documented as the hedge against an unwanted
- * auto-generated site name (which is why "kukaass.app" showed up).
+ * The other names this site answers to, offered to Google as fallbacks if it
+ * declines SITE_DISPLAY_NAME, most to least preferred. The bare host is last:
+ * Google documents a lowercase domain as the final backup, and naming ours
+ * explicitly beats letting it inherit "kukaass.app" from the parent domain.
  */
 export const SITE_ALTERNATE_NAMES = [
-  "Nexora",
   "Barangay Libtangin",
   "Barangay Libtangin Online Services",
+  "Nexora | Barangay Libtangin",
+  SITE_URL.replace(/^https?:\/\//, ""),
 ];
 
 /**

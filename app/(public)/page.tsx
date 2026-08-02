@@ -28,7 +28,7 @@ import {
 } from "@/app/_components/json-ld";
 
 export const metadata: Metadata = {
-  title: "Barangay Libtangin | Online services on Nexora",
+  title: { absolute: "Barangay Libtangin | Online services on Nexora" },
   description:
     "Residents of Barangay Libtangin, Gasan, Marinduque can request clearances, certificates, and permits online on Nexora, track each request, and verify any document with its QR code.",
 };
