@@ -93,6 +93,24 @@ export function breadcrumbLd(trail: Array<{ name: string; path: string }>): Reco
 }
 
 /**
+ * A FAQPage from question/answer pairs. The answers must be the same text the
+ * page shows a visitor — marking up copy that isn't visible is a violation, so
+ * build this from the very array the page renders.
+ */
+export function faqLd(
+  items: ReadonlyArray<{ question: string; answer: string }>,
+): Record<string, unknown> {
+  return {
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+}
+
+/**
  * Wrap a set of nodes in a single @graph document so one <script> carries the
  * whole structured-data graph for a page.
  */

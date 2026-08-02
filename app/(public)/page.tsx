@@ -7,32 +7,25 @@ import {
   BadgeCheck,
   Building2,
   Check,
-  ClipboardList,
   Clock,
-  FileText,
-  Languages,
   MapPin,
   Megaphone,
   ScanLine,
-  Scale,
-  ShieldCheck,
   UserRound,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/session";
-import {
-  NexoraGlyph,
-  NexoraMark,
-} from "@/app/(auth)/_components/nexora-mark";
-import { SiteHeader } from "./_components/site-header";
+import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
+import { SiteHeader } from "@/app/_components/site-header";
+import { SiteFooter } from "@/app/_components/site-footer";
+import { SERVICE_CATALOG } from "@/app/_components/service-catalog";
 import {
   JsonLd,
-  breadcrumbLd,
   graph,
   organizationLd,
   websiteLd,
-} from "./_components/json-ld";
+} from "@/app/_components/json-ld";
 
 export const metadata: Metadata = {
   title: "Barangay Libtangin | Online services on Nexora",
@@ -47,39 +40,6 @@ const FACTS = [
   { icon: UserRound, label: "Serving 1,676 residents" },
   { icon: Building2, label: "Zip 4905" },
   { icon: Clock, label: "Online anytime" },
-];
-
-const SERVICES = [
-  {
-    icon: ShieldCheck,
-    name: "Barangay Clearance",
-    body: "For employment, business, or proof of good standing.",
-  },
-  {
-    icon: FileText,
-    name: "Certificate of Residency",
-    body: "Official proof that you live in Barangay Libtangin.",
-  },
-  {
-    icon: BadgeCheck,
-    name: "Certificate of Indigency",
-    body: "For scholarships, medical assistance, and legal aid.",
-  },
-  {
-    icon: Building2,
-    name: "Business Permit",
-    body: "Register or renew a barangay business permit.",
-  },
-  {
-    icon: Scale,
-    name: "Complaints and Blotter",
-    body: "File a report and follow it through to resolution.",
-  },
-  {
-    icon: ClipboardList,
-    name: "Assistance Requests",
-    body: "Ask the barangay for help and track the response.",
-  },
 ];
 
 const STEPS = [
@@ -135,9 +95,9 @@ export default async function Home() {
 
   return (
     <>
-      <JsonLd
-        data={graph(organizationLd, websiteLd, breadcrumbLd([]))}
-      />
+      {/* No BreadcrumbList here: a homepage trail is a single item, which search
+          engines ignore. Breadcrumbs live on the pages below this one. */}
+      <JsonLd data={graph(organizationLd, websiteLd)} />
       <a
         href="#main"
         className="sr-only z-50 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:outline-none focus:ring-3 focus:ring-primary/40"
@@ -250,7 +210,7 @@ export default async function Home() {
 
             {/* A counter board, not a card grid: a ruled ledger of services. */}
             <ul className="mt-12 grid grid-cols-1 gap-x-12 border-t border-border md:grid-cols-2">
-              {SERVICES.map(({ icon: Icon, name, body }) => (
+              {SERVICE_CATALOG.map(({ icon: Icon, name, body }) => (
                 <li
                   key={name}
                   className="group flex items-start gap-4 border-b border-border py-6 transition-colors"
@@ -269,6 +229,15 @@ export default async function Home() {
                 </li>
               ))}
             </ul>
+
+            <div className="mt-10">
+              <Button asChild size="lg" variant="outline">
+                <Link href="/services">
+                  See every service, with fees and turnaround
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -308,6 +277,15 @@ export default async function Home() {
                 </li>
               ))}
             </ol>
+
+            <div className="mt-10">
+              <Button asChild size="lg" variant="outline" className="bg-background">
+                <Link href="/how-it-works">
+                  Read the full process, step by step
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+            </div>
           </div>
         </section>
 
@@ -374,26 +352,33 @@ export default async function Home() {
               </p>
             </div>
 
+            {/* Deliberately a doorway, not a feed: /announcements renders the
+                live notices, so the homepage never has to claim there are none. */}
             <div className="mt-10 flex flex-col items-center gap-5 rounded-4xl border border-dashed border-border bg-secondary/60 px-6 py-14 text-center">
               <span className="flex size-14 items-center justify-center rounded-2xl bg-accent text-primary ring-1 ring-primary/15">
                 <Megaphone className="size-6" aria-hidden />
               </span>
               <div className="max-w-md">
                 <p className="text-lg font-semibold tracking-tight">
-                  No announcements yet
+                  Notices from Barangay Libtangin
                 </p>
                 <p className="mt-2 text-pretty leading-relaxed text-muted-foreground">
-                  When Barangay Libtangin posts an update, it will appear here.
-                  Create an account to get advisories the moment they are
-                  published.
+                  Read every advisory the barangay has published. Create an
+                  account to also receive the ones meant for your own purok, the
+                  moment they go up.
                 </p>
               </div>
-              <Button asChild size="lg">
-                <Link href="/sign-up">
-                  Create your account
-                  <ArrowRight aria-hidden />
-                </Link>
-              </Button>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button asChild size="lg">
+                  <Link href="/announcements">
+                    Read the announcements
+                    <ArrowRight aria-hidden />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="bg-background">
+                  <Link href="/sign-up">Create your account</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </section>
@@ -431,6 +416,15 @@ export default async function Home() {
                   <dd className="mt-1 font-medium">A single scan</dd>
                 </div>
               </dl>
+
+              <div className="mt-8">
+                <Button asChild size="lg" variant="outline" className="bg-background">
+                  <Link href="/verify">
+                    <ScanLine aria-hidden />
+                    Verify a document
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             {/* The result of a scan: a verification panel. */}
@@ -677,92 +671,5 @@ function AudienceColumn({
         ))}
       </ul>
     </div>
-  );
-}
-
-function SiteFooter() {
-  const columns = [
-    {
-      heading: "Services",
-      links: [
-        { href: "#services", label: "What you can request" },
-        { href: "#how-it-works", label: "How it works" },
-        { href: "#announcements", label: "Announcements" },
-        { href: "#verify", label: "Verify a document" },
-      ],
-    },
-    {
-      heading: "Account",
-      links: [
-        { href: "/sign-up", label: "Create account" },
-        { href: "/sign-in", label: "Sign in" },
-        { href: "/forgot-password", label: "Reset password" },
-      ],
-    },
-  ];
-
-  return (
-    <footer className="border-t border-border bg-background">
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-5 py-14 sm:px-8 md:grid-cols-[1.5fr_1fr_1fr]">
-        <div className="max-w-sm">
-          <div className="flex items-center gap-3">
-            <NexoraMark />
-            <span aria-hidden className="h-5 w-px bg-border" />
-            <span className="text-sm leading-tight text-muted-foreground">
-              for Barangay
-              <span className="block font-medium text-foreground">
-                Libtangin
-              </span>
-            </span>
-          </div>
-          <p className="mt-4 text-pretty text-sm leading-relaxed text-muted-foreground">
-            The online services portal of Barangay Libtangin, powered by Nexora.
-            Register, request documents, and track each one, from your phone.
-          </p>
-          <div className="mt-5 flex flex-col gap-2 text-sm text-muted-foreground">
-            <p className="flex items-start gap-2">
-              <MapPin className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-              <span>
-                Barangay Hall, Libtangin, Gasan, Marinduque 4905
-              </span>
-            </p>
-            <p className="flex items-center gap-2">
-              <Languages className="size-4 shrink-0 text-primary" aria-hidden />
-              Available in English and Filipino
-            </p>
-          </div>
-        </div>
-
-        {columns.map((col) => (
-          <nav key={col.heading} aria-label={col.heading}>
-            <h2 className="text-sm font-semibold tracking-tight">
-              {col.heading}
-            </h2>
-            <ul className="mt-4 flex flex-col gap-3">
-              {col.links.map((link) => (
-                <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground underline-offset-4 outline-none transition-colors hover:text-primary hover:underline focus-visible:text-primary"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ))}
-      </div>
-
-      <div className="border-t border-border bg-secondary">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-start justify-between gap-2 px-5 py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:px-8">
-          <p>© 2026 Barangay Libtangin, Gasan, Marinduque.</p>
-          <p className="inline-flex items-center gap-2">
-            <NexoraGlyph className="size-4 text-primary" aria-hidden />
-            Powered by Nexora
-          </p>
-        </div>
-      </div>
-    </footer>
   );
 }
