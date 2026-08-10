@@ -20,7 +20,11 @@ export const auth = betterAuth({
   baseURL:
     process.env.BETTER_AUTH_URL ??
     process.env.NEXT_PUBLIC_BETTER_AUTH_URL ??
+    "https://nexora.kukaass.app",
+  trustedOrigins: [
+    "https://nexora.kukaass.app",
     "http://localhost:3000",
+  ],
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),

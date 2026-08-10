@@ -6,7 +6,7 @@ import { createAuthClient } from "better-auth/react";
 // is set (build time) and otherwise letting better-auth fall back to the
 // current origin (relative /api/auth) makes the client work on any domain.
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL || "https://nexora-libtangin.kukaass.app",
+  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
 });
 
 export const { signIn, signUp, signOut, useSession } = authClient;
