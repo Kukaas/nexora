@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -78,6 +78,17 @@ export function ResidentBlotterForm({
     const dc = defaultContact ?? "";
     return dc.replace(/^0/, "").slice(0, 10);
   });
+
+  // Pre-fill helpers: detect when phone matches the profile value
+  const profileDigits = useMemo(
+    () => (defaultContact ? defaultContact.replace(/^0/, "").slice(0, 10) : ""),
+    [defaultContact],
+  );
+  const isPhonePrefilled = contactDigits === profileDigits && profileDigits.length > 0;
+  const restoreProfilePhone = useCallback(
+    () => setContactDigits(profileDigits),
+    [profileDigits],
+  );
   const [narrative, setNarrative] = useState("");
   const [isConfidential, setIsConfidential] = useState(false);
 
@@ -352,7 +363,23 @@ export function ResidentBlotterForm({
                 />
               </div>
               <p className="text-[11px] text-muted-foreground">
-                The prefix <span className="font-mono font-semibold text-primary">+63</span> is fixed. Enter the remaining 10 digits.
+                {isPhonePrefilled ? (
+                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="size-3 shrink-0" aria-hidden />
+                    Pre-filled from your profile
+                  </span>
+                ) : contactDigits.length === 0 && profileDigits.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={restoreProfilePhone}
+                    className="inline-flex items-center gap-1 font-medium text-primary hover:underline cursor-pointer"
+                  >
+                    <User className="size-3 shrink-0" aria-hidden />
+                    Use my profile number
+                  </button>
+                ) : (
+                  <>The prefix <span className="font-mono font-semibold text-primary">+63</span> is fixed. Enter the remaining 10 digits.</>
+                )}
               </p>
             </div>
           </section>

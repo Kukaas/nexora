@@ -531,20 +531,55 @@ All Philippine mobile number inputs across Nexora MUST use a **fixed, non-deleta
 - `ResidentBlotterForm` (`resident-blotter-form.tsx`) — `contactDigits` state
 - `ResidentBlotterEditForm` (`resident-blotter-edit-form.tsx`) — `contactDigits` state
 - `ProfileForm` (`profile-form.tsx`) — `mobileNumber` via `react-hook-form` `Controller` + Zod `PH_MOBILE_DIGITS = /^\d{10}$/`
+- `SetupForm` (`setup-form.tsx`) — `mobileNumber` via `react-hook-form` `Controller` + Zod `PH_MOBILE_DIGITS = /^\d{10}$/`
 
 ---
 
 ## 13. Pre-fill Personal Information Pattern
 
-When a form contains fields that overlap with the resident's profile data (e.g. contact number, name, purok, address), the form SHOULD either:
+When a form contains fields that overlap with the resident's profile data (e.g. contact number, name, purok, address), the form SHOULD provide a pre-fill mechanism.
 
-1. **Auto-fill on mount** via props (e.g. `defaultContact` prop for phone numbers) — preferred for single-field pre-fill.
-2. **Provide a "Use my profile info" button** — for forms with multiple personal fields, add a subtle button that populates all overlapping fields at once from profile data passed as props.
+### 1. Phone Number Auto-Fill (Incident & Blotter Create Forms)
+- Phone number is auto-filled on mount via `defaultContact` prop.
+- Helper text dynamically shows:
+  - ✅ `Pre-filled from your profile` (green, with CheckCircle2 icon) when value matches profile.
+  - 👤 `Use my profile number` (clickable button) when user clears the field.
+  - Standard `+63 is fixed. Enter the remaining 10 digits.` otherwise.
 
-### Currently Auto-Filled Fields
-- `ResidentIncidentForm` / `ResidentBlotterForm`: Phone number is auto-filled via `defaultContact` prop from the resident's profile `mobileNumber`.
+### 2. Dynamic Field Pre-Fill (Document Request Form)
+For forms with **dynamic/configurable fields** (like `RequestForm` with `DocumentField[]`), use the `ProfileInfo` + label-matching pattern:
 
-### Future Application
-For any new form that asks the resident to enter their name, purok, address, or phone number — pass the profile data as a prop and either auto-fill or provide a "Pre-fill from my profile" action button.
+#### `ProfileInfo` Type (exported from `request-form.tsx`)
+```ts
+type ProfileInfo = {
+  fullName: string;    // "Juan Santos Dela Cruz"
+  firstName: string;   // "Juan"
+  middleName: string;  // "Santos"
+  lastName: string;    // "Dela Cruz"
+  mobileNumber: string; // "09123456789"
+  purok: string;       // "Purok 1"
+  birthDate: string;   // "2000-01-15"
+  address: string;     // "Purok 1, Barangay Libtangin"
+};
+```
+
+#### Label Matching (`matchFieldToProfile`)
+Case-insensitive keyword matching on field labels:
+- `"full name"`, `"complete name"`, generic `"name"` → `fullName` (excludes spouse/father/mother/maiden/respondent/business/document)
+- `"first name"` → `firstName`; `"middle name"` → `middleName`; `"last name"` / `"surname"` → `lastName`
+- `"address"`, `"purok"` → `address`
+- `"mobile"`, `"contact"`, `"phone"`, `"cellphone"` → `mobileNumber`
+- `"birth"`, `"birthday"`, `"dob"` (date-type fields only) → `birthDate`
+
+#### UI Button
+A pill-shaped `"Pre-fill from my profile"` button appears above the dynamic fields grid when matchable fields exist. It only fills **empty** fields (never overwrites user edits) and shows a toast on success.
+
+#### Server Page Setup
+Build `ProfileInfo` from `getResidentProfile()` + `PUROK_LABELS` and pass as `profileInfo` prop.
+
+### 3. Forms Using Pre-Fill
+- `ResidentIncidentForm` — phone auto-fill + "Use my profile number" restore
+- `ResidentBlotterForm` — phone auto-fill + "Use my profile number" restore
+- `RequestForm` — "Pre-fill from my profile" button for dynamic document fields (create + edit/resubmit)
 
 

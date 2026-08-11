@@ -12,6 +12,7 @@ import {
   Maximize2,
   QrCode,
   Trash2,
+  UserRoundCheck,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +31,79 @@ import {
   submitDocumentRequest,
   updateDocumentRequest,
 } from "@/lib/document-actions";
+
+/**
+ * Lightweight subset of the resident's profile passed from the server page.
+ * Used by the pre-fill button to populate dynamic document fields that match
+ * common personal-info labels (e.g. "Full Name", "Address", "Date of Birth").
+ */
+export type ProfileInfo = {
+  fullName: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  mobileNumber: string;
+  purok: string;
+  birthDate: string;
+  address: string;
+};
+
+/**
+ * Try to match a document field label to profile data. Uses case-insensitive
+ * keyword matching on common barangay document field names.
+ */
+function matchFieldToProfile(
+  label: string,
+  fieldType: string,
+  profile: ProfileInfo,
+): string | null {
+  const l = label.toLowerCase();
+
+  // Full name fields
+  if (
+    l.includes("full name") ||
+    l.includes("complete name") ||
+    (l.includes("name") &&
+      !l.includes("first") &&
+      !l.includes("last") &&
+      !l.includes("middle") &&
+      !l.includes("nick") &&
+      !l.includes("maiden") &&
+      !l.includes("respondent") &&
+      !l.includes("spouse") &&
+      !l.includes("father") &&
+      !l.includes("mother") &&
+      !l.includes("guardian") &&
+      !l.includes("document") &&
+      !l.includes("business"))
+  )
+    return profile.fullName;
+
+  if (l.includes("first name")) return profile.firstName;
+  if (l.includes("middle name")) return profile.middleName;
+  if (l.includes("last name") || l.includes("surname")) return profile.lastName;
+
+  // Address / purok
+  if (l.includes("address") || l.includes("purok")) return profile.address;
+
+  // Contact
+  if (
+    l.includes("mobile") ||
+    l.includes("contact") ||
+    l.includes("phone") ||
+    l.includes("cellphone")
+  )
+    return profile.mobileNumber;
+
+  // Date of birth — only for date-type fields
+  if (
+    fieldType === "date" &&
+    (l.includes("birth") || l.includes("birthday") || l.includes("dob"))
+  )
+    return profile.birthDate;
+
+  return null;
+}
 
 /** Prefill + target for editing an existing request, instead of creating one. */
 export type RequestEditContext = {
@@ -70,6 +144,7 @@ export function RequestForm({
   uploadsEnabled,
   backHref,
   editing,
+  profileInfo,
 }: {
   type: DocumentTypeDTO;
   methods: PaymentMethodDTO[];
@@ -78,6 +153,8 @@ export function RequestForm({
   backHref: string;
   /** When set, the form edits this request instead of creating a new one. */
   editing?: RequestEditContext;
+  /** The resident's profile data for auto-filling matching fields. */
+  profileInfo?: ProfileInfo;
 }) {
   const router = useRouter();
   const refId = useId();
@@ -290,6 +367,36 @@ export function RequestForm({
 
       {/* Two columns of inputs on wider screens so a full-width card doesn't
           stretch every field edge to edge; long-text fields keep the full row. */}
+      {profileInfo && !editing && type.fields.length > 0 && (() => {
+        // Check if any fields can be matched to profile data
+        const matchableCount = type.fields.filter(
+          (f) => matchFieldToProfile(f.label, f.type, profileInfo) !== null,
+        ).length;
+        if (matchableCount === 0) return null;
+        return (
+          <div className="mt-5 mb-1">
+            <button
+              type="button"
+              onClick={() => {
+                const next = { ...answers };
+                for (const field of type.fields) {
+                  const match = matchFieldToProfile(field.label, field.type, profileInfo);
+                  // Only fill empty fields — don't overwrite user edits
+                  if (match && !(next[field.id] ?? "").trim()) {
+                    next[field.id] = match;
+                  }
+                }
+                setAnswers(next);
+                toast.success("Fields pre-filled from your profile.");
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hover:border-primary/30 cursor-pointer"
+            >
+              <UserRoundCheck className="size-3.5" aria-hidden />
+              Pre-fill from my profile
+            </button>
+          </div>
+        );
+      })()}
       <div className="mt-5 grid gap-x-5 gap-y-4 sm:grid-cols-2">
         {type.fields.map((field) => (
           <div

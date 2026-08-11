@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { getSession } from "@/lib/session";
-import { getResidencyStatus } from "@/lib/profile";
+import { getResidencyStatus, getResidentProfile } from "@/lib/profile";
 import {
   getDocumentTypeById,
   getEnabledPaymentMethods,
@@ -10,10 +10,12 @@ import {
 } from "@/lib/documents-data";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
+import { PUROK_LABELS } from "@/lib/purok";
 import type { DocumentTypeDTO } from "@/lib/documents";
 import {
   RequestForm,
   type RequestEditContext,
+  type ProfileInfo,
 } from "../../../../_components/request-form";
 
 export const metadata: Metadata = {
@@ -76,7 +78,10 @@ export default async function ResidentRequestEditPage({
     answers[field.id] = byLabel.get(field.label) ?? "";
   }
 
-  const methods = await getEnabledPaymentMethods();
+  const [methods, profile] = await Promise.all([
+    getEnabledPaymentMethods(),
+    getResidentProfile(session.user.id),
+  ]);
   const uploadsEnabled = isCloudinaryConfigured();
 
   const editing: RequestEditContext = {
@@ -91,6 +96,23 @@ export default async function ResidentRequestEditPage({
     resubmitNote: request.resubmitNote ?? "",
   };
 
+  const profileInfo: ProfileInfo | undefined = profile
+    ? {
+        fullName: [profile.firstName, profile.middleName, profile.lastName]
+          .filter(Boolean)
+          .join(" "),
+        firstName: profile.firstName ?? "",
+        middleName: profile.middleName ?? "",
+        lastName: profile.lastName ?? "",
+        mobileNumber: profile.mobileNumber ?? "",
+        purok: profile.purok ? PUROK_LABELS[profile.purok] : "",
+        birthDate: profile.birthDate ?? "",
+        address: profile.purok
+          ? `${PUROK_LABELS[profile.purok]}, Barangay Libtangin`
+          : "",
+      }
+    : undefined;
+
   return (
     <RequestForm
       type={type}
@@ -98,6 +120,7 @@ export default async function ResidentRequestEditPage({
       uploadsEnabled={uploadsEnabled}
       backHref={detailHref}
       editing={editing}
+      profileInfo={profileInfo}
     />
   );
 }

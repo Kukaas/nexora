@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
 import { getSession } from "@/lib/session";
-import { getResidencyStatus } from "@/lib/profile";
+import { getResidencyStatus, getResidentProfile } from "@/lib/profile";
 import {
   getActiveDocumentTypeById,
   getEnabledPaymentMethods,
 } from "@/lib/documents-data";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
-import { RequestForm } from "../../../_components/request-form";
+import { PUROK_LABELS } from "@/lib/purok";
+import { RequestForm, type ProfileInfo } from "../../../_components/request-form";
 
 export const metadata: Metadata = {
   title: "Request a document · Barangay Libtangin",
@@ -33,13 +34,32 @@ export default async function ResidentRequestPage({
   const residency = await getResidencyStatus(session.user.id);
   if (residency !== "approved") redirect(`/resident/${id}`);
 
-  const [type, methods] = await Promise.all([
+  const [type, methods, profile] = await Promise.all([
     getActiveDocumentTypeById(typeId),
     getEnabledPaymentMethods(),
+    getResidentProfile(session.user.id),
   ]);
   if (!type) notFound();
 
   const uploadsEnabled = isCloudinaryConfigured();
+
+  // Build a lightweight profile summary for the pre-fill button
+  const profileInfo: ProfileInfo | undefined = profile
+    ? {
+        fullName: [profile.firstName, profile.middleName, profile.lastName]
+          .filter(Boolean)
+          .join(" "),
+        firstName: profile.firstName ?? "",
+        middleName: profile.middleName ?? "",
+        lastName: profile.lastName ?? "",
+        mobileNumber: profile.mobileNumber ?? "",
+        purok: profile.purok ? PUROK_LABELS[profile.purok] : "",
+        birthDate: profile.birthDate ?? "",
+        address: profile.purok
+          ? `${PUROK_LABELS[profile.purok]}, Barangay Libtangin`
+          : "",
+      }
+    : undefined;
 
   return (
     <RequestForm
@@ -47,6 +67,7 @@ export default async function ResidentRequestPage({
       methods={methods}
       uploadsEnabled={uploadsEnabled}
       backHref={`/resident/${id}`}
+      profileInfo={profileInfo}
     />
   );
 }
