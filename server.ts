@@ -11,6 +11,8 @@
 // Must be first: loads .env before lib/prisma reads DATABASE_URL at import time.
 import "./load-env";
 
+process.env.TURBOPACK = "0";
+
 import { createServer } from "node:http";
 import { parse } from "node:url";
 
