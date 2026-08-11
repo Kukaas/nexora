@@ -22,11 +22,6 @@ const nextConfig: NextConfig = {
       static: 180,
     },
   },
-  webpack: (config) => {
-    // Disable Webpack SWC minification on ARM64 Termux to avoid native SWC minifier errors
-    config.optimization.minimize = false;
-    return config;
-  },
 };
 
 export default nextConfig;

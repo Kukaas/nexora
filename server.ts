@@ -11,8 +11,6 @@
 // Must be first: loads .env before lib/prisma reads DATABASE_URL at import time.
 import "./load-env";
 
-process.env.TURBOPACK = "0";
-
 import { createServer } from "node:http";
 import { parse } from "node:url";
 
@@ -34,7 +32,7 @@ const port = Number(process.env.PORT ?? 3000);
 
 type SocketData = { userId: string; roles: UserRoles[]; official: boolean };
 
-const app = next({ dev, hostname, port, turbo: false });
+const app = next({ dev, hostname, port});
 const handle = app.getRequestHandler();
 
 async function main() {
