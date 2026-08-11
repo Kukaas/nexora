@@ -32,7 +32,7 @@ const port = Number(process.env.PORT ?? 3000);
 
 type SocketData = { userId: string; roles: UserRoles[]; official: boolean };
 
-const app = next({ dev, hostname, port });
+const app = next({ dev, hostname, port, turbo: false });
 const handle = app.getRequestHandler();
 
 async function main() {
