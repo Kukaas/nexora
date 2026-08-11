@@ -1,14 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, LayoutTemplate, Pencil, Plus } from "lucide-react";
+import {
+  FileText,
+  LayoutTemplate,
+  Pencil,
+  Plus,
+  Search,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Empty,
@@ -51,7 +59,8 @@ export function DocumentTypesManager({
 }) {
   const router = useRouter();
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const pg = useClientPagination(types, 10);
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const toggleActive = async (type: DocumentTypeDTO, active: boolean) => {
     setTogglingId(type.id);
@@ -67,62 +76,175 @@ export function DocumentTypesManager({
     router.refresh();
   };
 
-  const activeCount = types.filter((t) => t.active).length;
+  const summary = useMemo(() => {
+    return {
+      total: types.length,
+      active: types.filter((t) => t.active).length,
+      inactive: types.filter((t) => !t.active).length,
+      free: types.filter((t) => t.fee === 0).length,
+      paid: types.filter((t) => t.fee > 0).length,
+    };
+  }, [types]);
+
+  const filteredTypes = useMemo(() => {
+    return types.filter((t) => {
+      if (statusFilter !== "ALL") {
+        if (statusFilter === "ACTIVE" && !t.active) return false;
+        if (statusFilter === "INACTIVE" && t.active) return false;
+        if (statusFilter === "FREE" && t.fee > 0) return false;
+        if (statusFilter === "PAID" && t.fee === 0) return false;
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const matchName = t.name.toLowerCase().includes(q);
+        const matchDesc = (t.description ?? "").toLowerCase().includes(q);
+        if (!matchName && !matchDesc) return false;
+      }
+
+      return true;
+    });
+  }, [types, statusFilter, searchQuery]);
+
+  const pg = useClientPagination(filteredTypes, 10);
+
+  const FILTERS = [
+    { value: "ALL", label: "All Documents", count: types.length },
+    { value: "ACTIVE", label: "Available", count: summary.active },
+    { value: "INACTIVE", label: "Off / Hidden", count: summary.inactive },
+    { value: "FREE", label: "Free", count: summary.free },
+    { value: "PAID", label: "Fee Required", count: summary.paid },
+  ];
 
   return (
-    <div className="flex flex-col gap-5">
-      {types.length > 0 && (
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground tabular-nums">
-              {types.length}
-            </span>{" "}
-            {types.length === 1 ? "document" : "documents"}
-            <span className="px-1.5 text-muted-foreground/60" aria-hidden>
-              ·
-            </span>
-            <span className="font-medium text-foreground tabular-nums">
-              {activeCount}
-            </span>{" "}
-            available to residents
-          </p>
-          <Button asChild>
-            <Link href={`${basePath}/new`}>
-              <Plus />
-              Add document
-            </Link>
-          </Button>
-        </div>
-      )}
+    <div className="flex flex-col gap-6">
+      {/* Official Nexora KPI Stat Bar Suite */}
+      <dl className="flex flex-col divide-y divide-border rounded-4xl border border-border bg-card p-1 sm:flex-row sm:divide-x sm:divide-y-0">
+        <Stat label="Catalog document types" value={summary.total} />
+        <Stat label="Available to residents" value={summary.active} accent />
+        <Stat label="Free certificates" value={summary.free} />
+        <Stat label="Fee-required permits" value={summary.paid} />
+      </dl>
 
-      {types.length === 0 ? (
+      {/* Filter Toolbar & Search Bar */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
+          <div
+            role="tablist"
+            aria-label="Filter document catalog"
+            className="flex flex-1 gap-1 overflow-x-auto rounded-3xl bg-muted p-1"
+          >
+            {FILTERS.map((f) => {
+              const active = statusFilter === f.value;
+              return (
+                <button
+                  key={f.value}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    setStatusFilter(f.value);
+                    pg.setPage(1);
+                  }}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-2 rounded-[1.25rem] px-3 py-2 text-sm font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/30",
+                    active
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f.label}
+                  <span
+                    className={cn(
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums",
+                      active
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-border/70 text-muted-foreground"
+                    )}
+                  >
+                    {f.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-44 sm:w-64">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                type="text"
+                placeholder="Search document name..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  pg.setPage(1);
+                }}
+                className="pl-9 pr-8 h-9 text-xs rounded-2xl bg-background border-border"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    pg.setPage(1);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {filteredTypes.length === 0 ? (
         <Empty className="rounded-4xl border border-dashed border-border bg-card/50">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <FileText />
             </EmptyMedia>
-            <EmptyTitle>No documents yet</EmptyTitle>
+            <EmptyTitle>
+              {types.length === 0 ? "No documents in catalog" : "No matching documents"}
+            </EmptyTitle>
             <EmptyDescription>
-              Add the documents residents can request, like Barangay Clearance or
-              Certificate of Indigency, and set a fee for each.
+              {types.length === 0
+                ? "Add official document types that residents can request, like Barangay Clearance or Certificate of Indigency."
+                : "Try clearing your search query or selecting a different status filter."}
             </EmptyDescription>
           </EmptyHeader>
-          <Button asChild>
-            <Link href={`${basePath}/new`}>
-              <Plus />
-              Add your first document
-            </Link>
-          </Button>
+          {types.length === 0 ? (
+            <Button asChild>
+              <Link href={`${basePath}/new`}>
+                <Plus />
+                Add your first document
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStatusFilter("ALL");
+                setSearchQuery("");
+                pg.setPage(1);
+              }}
+            >
+              Reset Filters
+            </Button>
+          )}
         </Empty>
       ) : (
         <>
-          {/* Table — tablet and up */}
+          {/* Table — desktop view */}
           <TableCard className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="h-11 ps-5 text-xs font-medium tracking-wide text-muted-foreground">
-                    Document
+                    Document Title
                   </TableHead>
                   <TableHead className="h-11 text-right text-xs font-medium tracking-wide text-muted-foreground">
                     Fee
@@ -131,12 +253,12 @@ export function DocumentTypesManager({
                     Turnaround
                   </TableHead>
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
-                    Requests
+                    Request Volume
                   </TableHead>
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
                     Available
                   </TableHead>
-                  <TableHead className="h-11 w-20 pe-5 text-right text-xs font-medium tracking-wide text-muted-foreground">
+                  <TableHead className="h-11 w-24 pe-5 text-right text-xs font-medium tracking-wide text-muted-foreground">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -151,32 +273,38 @@ export function DocumentTypesManager({
                       <div className="flex items-center gap-2">
                         <span
                           className={cn(
-                            "font-medium",
+                            "font-medium text-foreground",
                             !type.active && "text-muted-foreground",
                           )}
                         >
                           {type.name}
                         </span>
                         {!type.active && <Badge variant="secondary">Off</Badge>}
+                        {type.template && (
+                          <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0">
+                            <LayoutTemplate className="size-3 text-primary" />
+                            Template
+                          </Badge>
+                        )}
                       </div>
                       {type.description && (
-                        <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+                        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                           {type.description}
                         </p>
                       )}
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "text-right font-mono tabular-nums",
+                        "text-right font-mono text-xs font-medium tabular-nums",
                         !type.active && "text-muted-foreground",
                       )}
                     >
                       {type.fee > 0 ? formatPeso(type.fee) : "Free"}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-xs text-muted-foreground">
                       {turnaroundLabel(type.turnaroundDays)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="text-xs text-muted-foreground">
                       {requestCountLabel(type.requestCount)}
                     </TableCell>
                     <TableCell>
@@ -193,6 +321,7 @@ export function DocumentTypesManager({
                           variant="ghost"
                           size="icon"
                           asChild
+                          title={`Design layout for ${type.name}`}
                           aria-label={`Design layout for ${type.name}`}
                         >
                           <Link href={`${basePath}/${type.id}/design`}>
@@ -207,6 +336,7 @@ export function DocumentTypesManager({
                           variant="ghost"
                           size="icon"
                           asChild
+                          title={`Edit ${type.name}`}
                           aria-label={`Edit ${type.name}`}
                         >
                           <Link href={`${basePath}/${type.id}/edit`}>
@@ -221,7 +351,7 @@ export function DocumentTypesManager({
             </Table>
           </TableCard>
 
-          {/* Stacked rows — phones */}
+          {/* Stacked rows — mobile view */}
           <ul className="divide-y divide-border overflow-hidden rounded-4xl border border-border bg-card md:hidden">
             {pg.visible.map((type) => (
               <li
@@ -235,7 +365,7 @@ export function DocumentTypesManager({
                   <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                     <span
                       className={cn(
-                        "font-medium",
+                        "font-medium text-foreground",
                         !type.active && "text-muted-foreground",
                       )}
                     >
@@ -243,7 +373,7 @@ export function DocumentTypesManager({
                     </span>
                     <span
                       className={cn(
-                        "font-mono text-sm font-medium tabular-nums",
+                        "font-mono text-xs font-medium tabular-nums",
                         type.active
                           ? "text-foreground"
                           : "text-muted-foreground",
@@ -252,9 +382,15 @@ export function DocumentTypesManager({
                       {type.fee > 0 ? formatPeso(type.fee) : "Free"}
                     </span>
                     {!type.active && <Badge variant="secondary">Off</Badge>}
+                    {type.template && (
+                      <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0">
+                        <LayoutTemplate className="size-3 text-primary" />
+                        Template
+                      </Badge>
+                    )}
                   </div>
                   {type.description && (
-                    <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
                       {type.description}
                     </p>
                   )}
@@ -316,6 +452,28 @@ export function DocumentTypesManager({
           />
         </>
       )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex-1 px-5 py-4">
+      <dt className="text-xs font-medium tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-1 flex items-center gap-2">
+        {accent && <span className="size-2 rounded-full bg-primary" aria-hidden />}
+        <span className="text-2xl font-semibold tabular-nums">{value}</span>
+      </dd>
     </div>
   );
 }

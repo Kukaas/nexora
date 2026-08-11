@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    unoptimized: true,
+  },
   experimental: {
     serverActions: {
       // Proofs, document media, and resident ID photos use Server Actions. Keep

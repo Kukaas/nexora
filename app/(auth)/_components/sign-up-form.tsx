@@ -95,13 +95,14 @@ export function SignUpForm() {
   const signUpWithGoogle = async () => {
     setFormError(null);
     setIsGoogleLoading(true);
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
     const { error } = await authClient.signIn.social({
       provider: "google",
       // /start resolves the user's role and forwards them to their home.
-      callbackURL: "/start",
+      callbackURL: `${origin}/start`,
       // If this Google email already has a password account, send them to
       // sign-in, where the message explains to use email and password instead.
-      errorCallbackURL: "/sign-in",
+      errorCallbackURL: `${origin}/sign-in`,
     });
     if (error) {
       setIsGoogleLoading(false);

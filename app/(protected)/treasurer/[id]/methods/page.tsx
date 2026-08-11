@@ -5,7 +5,7 @@ import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { PaymentMethodsManager } from "../../_components/payment-methods-manager";
 
 export const metadata: Metadata = {
-  title: "Payment methods · Treasury · Barangay Libtangin",
+  title: "Payment Methods · Treasury · Barangay Libtangin",
 };
 
 export default async function TreasurerMethodsPage() {
@@ -13,18 +13,19 @@ export default async function TreasurerMethodsPage() {
   const uploadsEnabled = isCloudinaryConfigured();
 
   return (
-    <div>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Payment methods</h1>
-        <p className="text-sm text-muted-foreground text-pretty">
-          Set up how residents pay. Upload your GCash and Maya QR codes, or accept
-          cash at the hall. Only the channels you turn on are shown to residents.
-        </p>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-balance">
+            Payment Channels & Configuration
+          </h1>
+          <p className="max-w-prose text-sm text-muted-foreground text-pretty">
+            Set up accepted resident payment channels, GCash QR codes, bank transfer details, or barangay hall cash desk instructions.
+          </p>
+        </div>
       </header>
 
-      <div className="mt-8">
-        <PaymentMethodsManager methods={methods} uploadsEnabled={uploadsEnabled} />
-      </div>
+      <PaymentMethodsManager methods={methods} uploadsEnabled={uploadsEnabled} />
     </div>
   );
 }

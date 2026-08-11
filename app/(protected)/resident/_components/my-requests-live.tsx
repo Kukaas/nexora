@@ -15,9 +15,11 @@ import { MyRequestsView } from "./my-requests-view";
 export function MyRequestsLive({
   basePath,
   requestHref,
+  verified = true,
 }: {
   basePath: string;
   requestHref: string;
+  verified?: boolean;
 }) {
   const { data } = useMyRequests();
   return (
@@ -25,6 +27,7 @@ export function MyRequestsLive({
       requests={data ?? []}
       basePath={basePath}
       requestHref={requestHref}
+      verified={verified}
     />
   );
 }

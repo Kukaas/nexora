@@ -10,6 +10,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   ShieldQuestion,
+  Shield,
+  Siren,
 } from "lucide-react";
 
 import {
@@ -35,6 +37,7 @@ import { queryKeys } from "@/lib/query/keys";
 import { Button } from "@/components/ui/button";
 import { AnnouncementsFeed } from "../_components/announcements-feed";
 import { OverviewRequestsCard } from "../_components/overview-requests-card";
+import { ResidencyReviewNotice } from "../_components/residency-review-notice";
 import { formatFullDate } from "../_data";
 
 export const metadata: Metadata = {
@@ -108,31 +111,80 @@ export default async function ResidentPage({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-8 lg:space-y-10">
           {verified ? (
-            <section id="request" className="scroll-mt-20">
-              <Link
-                href={`/resident/${id}/request`}
-                className="group flex items-center gap-4 rounded-4xl border border-border bg-card p-5 shadow-sm ring-1 ring-foreground/5 transition-colors outline-none hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-3 focus-visible:ring-ring/40 sm:p-6 dark:ring-foreground/10"
-              >
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-                  <FilePlus2 className="size-6" aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-lg font-semibold tracking-tight">
-                    Request a document
-                  </span>
-                  <span className="block text-sm text-muted-foreground text-pretty">
-                    Apply online and track it here. No need to line up at the
-                    hall.
-                  </span>
-                </span>
-                <ChevronRight
-                  aria-hidden
-                  className="size-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
-                />
-              </Link>
+            <section id="services" className="scroll-mt-20">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <Link
+                  href={`/resident/${id}/request`}
+                  className="group flex flex-col justify-between gap-4 rounded-4xl border border-border bg-card p-5 shadow-sm ring-1 ring-foreground/5 transition-colors outline-none hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-3 focus-visible:ring-ring/40 dark:ring-foreground/10"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-11 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
+                      <FilePlus2 className="size-5.5" aria-hidden />
+                    </span>
+                    <ChevronRight
+                      aria-hidden
+                      className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-base font-semibold tracking-tight">
+                      Request document
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Apply online for clearances & certificates.
+                    </span>
+                  </div>
+                </Link>
+
+                <Link
+                  href={`/resident/${id}/incidents/new`}
+                  className="group flex flex-col justify-between gap-4 rounded-4xl border border-border bg-card p-5 shadow-sm ring-1 ring-foreground/5 transition-colors outline-none hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-3 focus-visible:ring-ring/40 dark:ring-foreground/10"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      <Siren className="size-5.5" aria-hidden />
+                    </span>
+                    <ChevronRight
+                      aria-hidden
+                      className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-base font-semibold tracking-tight">
+                      Report an incident
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Report community issues or disturbances.
+                    </span>
+                  </div>
+                </Link>
+
+                <Link
+                  href={`/resident/${id}/blotter/new`}
+                  className="group flex flex-col justify-between gap-4 rounded-4xl border border-border bg-card p-5 shadow-sm ring-1 ring-foreground/5 transition-colors outline-none hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-3 focus-visible:ring-ring/40 dark:ring-foreground/10"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="flex size-11 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                      <Shield className="size-5.5" aria-hidden />
+                    </span>
+                    <ChevronRight
+                      aria-hidden
+                      className="size-5 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-base font-semibold tracking-tight">
+                      File blotter report
+                    </span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Formal legal blotter & Lupon mediation.
+                    </span>
+                  </div>
+                </Link>
+              </div>
             </section>
           ) : (
-            <ReviewNotice status={residency} />
+            <ResidencyReviewNotice status={residency} residentId={id} />
           )}
           <AnnouncementsFeed
             announcements={announcements.items}

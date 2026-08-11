@@ -7,6 +7,12 @@
  */
 import { loadEnvConfig } from "@next/env";
 
-const dev = !process.argv.includes("--prod");
+const dev = !process.argv.includes("--prod") && process.env.NODE_ENV !== "production";
 loadEnvConfig(process.cwd(), dev);
+
+if (dev) {
+  const port = process.env.PORT || "3001";
+  process.env.BETTER_AUTH_URL = `http://localhost:${port}`;
+  process.env.NEXT_PUBLIC_BETTER_AUTH_URL = `http://localhost:${port}`;
+}
     

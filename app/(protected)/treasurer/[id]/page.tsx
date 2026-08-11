@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, QrCode, Receipt } from "lucide-react";
+import { ChevronRight, FileText, QrCode, Receipt } from "lucide-react";
 
 import { getDocumentFeeSummary } from "@/lib/treasurer-data";
 import { formatPeso } from "../_components/treasurer-ui";
@@ -19,38 +19,47 @@ export default async function TreasurerOverviewPage({
   const home = `/treasurer/${id}`;
 
   return (
-    <div className="flex flex-col gap-8">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Overview</h1>
-        <p className="text-sm text-muted-foreground text-pretty">
-          A quick look at the treasury: payments waiting on you and what&apos;s
-          cleared this month.
-        </p>
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-balance">
+            Treasury Overview & Financial Console
+          </h1>
+          <p className="max-w-prose text-sm text-muted-foreground text-pretty">
+            Monitor incoming resident document fee payments, configure payment channels, and generate official Commission on Audit (COA) statements.
+          </p>
+        </div>
       </header>
 
-      <dl className="flex flex-col divide-y divide-border rounded-4xl border border-border bg-card p-1 sm:flex-row sm:divide-x sm:divide-y-0">
+      <dl className="flex flex-col divide-y divide-border rounded-4xl border border-border bg-card p-1 sm:flex-row sm:divide-x sm:divide-y-0 shadow-sm ring-1 ring-foreground/5 dark:ring-foreground/10">
         <Stat
-          label="Awaiting verification"
+          label="Awaiting Verification"
           value={String(summary.pendingCount)}
           sub={`${formatPeso(summary.pendingTotal)} pending`}
+          accent
         />
         <Stat
-          label="Verified this month"
+          label="Verified This Month"
           value={String(summary.clearedThisMonth)}
           sub={`${formatPeso(summary.clearedThisMonthTotal)} cleared`}
+        />
+        <Stat
+          label="Total Cleared Revenue"
+          value={formatPeso(summary.clearedThisMonthTotal)}
+          sub="Monthly cleared total"
         />
       </dl>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-xs font-medium tracking-wide text-muted-foreground">
-          Go to
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Quick Actions & Modules
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <ActionCard
             href={`${home}/payments`}
             icon={Receipt}
-            title="Payments"
-            description="Verify resident payments for document requests."
+            title="Payments Queue"
+            description="Verify resident payment receipts and clear document fees."
             badge={
               summary.pendingCount > 0 ? summary.pendingCount : undefined
             }
@@ -58,8 +67,14 @@ export default async function TreasurerOverviewPage({
           <ActionCard
             href={`${home}/methods`}
             icon={QrCode}
-            title="Payment methods"
-            description="Set up GCash, Maya, and cash for residents."
+            title="Payment Channels"
+            description="Set up GCash, Maya QR codes, and cash desk instructions."
+          />
+          <ActionCard
+            href={`${home}/coa-reports`}
+            icon={FileText}
+            title="COA Financial Reports"
+            description="View official collection logs and export COA statements."
           />
         </div>
       </section>
@@ -71,10 +86,12 @@ function Stat({
   label,
   value,
   sub,
+  accent,
 }: {
   label: string;
   value: string;
   sub: string;
+  accent?: boolean;
 }) {
   return (
     <div className="flex-1 px-5 py-4">
@@ -82,8 +99,14 @@ function Stat({
         {label}
       </dt>
       <dd className="mt-1 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold tabular-nums">{value}</span>
-        <span className="text-sm text-muted-foreground">{sub}</span>
+        <span
+          className={`text-2xl font-semibold tabular-nums ${
+            accent ? "text-primary font-bold" : "text-foreground"
+          }`}
+        >
+          {value}
+        </span>
+        <span className="text-xs text-muted-foreground">{sub}</span>
       </dd>
     </div>
   );
@@ -111,15 +134,15 @@ function ActionCard({
         <Icon className="size-5" aria-hidden />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2 font-medium">
+        <span className="flex items-center gap-2 font-medium text-foreground">
           {title}
           {badge !== undefined && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-xs font-medium text-accent-foreground tabular-nums">
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground tabular-nums">
               {badge}
             </span>
           )}
         </span>
-        <span className="block text-sm text-muted-foreground text-pretty">
+        <span className="block text-xs text-muted-foreground text-pretty mt-0.5">
           {description}
         </span>
       </span>

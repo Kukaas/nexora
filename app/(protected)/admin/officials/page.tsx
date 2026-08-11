@@ -7,6 +7,7 @@ import {
   OfficialsTable,
   type OfficialRow,
 } from "../_components/officials-table";
+import { UserRoles } from "@/app/generated/prisma/enums";
 import { OFFICIAL_ROLES, displayName } from "../_data";
 
 export const metadata: Metadata = {
@@ -40,52 +41,70 @@ export default async function OfficialsPage() {
     createdAt: o.createdAt,
   }));
 
+  const summary = {
+    total: rows.length,
+    executive: rows.filter((r) =>
+      r.roles.some((role) =>
+        ([UserRoles.CAPTAIN, UserRoles.SECRETARY, UserRoles.TREASURER] as UserRoles[]).includes(role)
+      )
+    ).length,
+    kagawad: rows.filter((r) => r.roles.includes(UserRoles.KAGAWAD)).length,
+    active: rows.filter((r) => r.emailVerified).length,
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-balance">
-            Officials
+            Barangay Officials Registry
           </h1>
           <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-            Accounts for the captain, council, and staff who run the barangay.
-            Each one can sign in with the role you assign.
+            Manage official accounts, assigned governance roles (Captain, Secretary, Treasurer, Kagawad), and Purok jurisdiction.
           </p>
         </div>
-        <CreateOfficialDialog className="shrink-0">
+        <CreateOfficialDialog className="shrink-0 rounded-2xl">
           <UserPlus />
           Create official account
         </CreateOfficialDialog>
       </header>
 
-      {rows.length === 0 ? (
-        <div className="rounded-4xl border border-border bg-card">
-          <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
-              <UserPlus className="size-6" aria-hidden />
-            </span>
-            <div className="space-y-1">
-              <p className="font-medium text-foreground">
-                No official accounts yet
-              </p>
-              <p className="max-w-xs text-sm text-muted-foreground">
-                Create the first one for the captain or a staff member.
-              </p>
-            </div>
-            <CreateOfficialDialog>
-              <UserPlus />
-              Create official account
-            </CreateOfficialDialog>
-          </div>
-        </div>
-      ) : (
-        <OfficialsTable officials={rows} />
-      )}
+      {/* Official Nexora KPI Stat Bar */}
+      <dl className="flex flex-col divide-y divide-border rounded-4xl border border-border bg-card p-1 sm:flex-row sm:divide-x sm:divide-y-0">
+        <Stat label="Total officials" value={summary.total} />
+        <Stat label="Executive board" value={summary.executive} accent />
+        <Stat label="Kagawads & council" value={summary.kagawad} />
+        <Stat label="Active accounts" value={summary.active} />
+      </dl>
+
+      <OfficialsTable officials={rows} />
 
       <p className="text-xs text-muted-foreground">
         {rows.length} {rows.length === 1 ? "account" : "accounts"} with official
-        access, including administrators.
+        governance access, including administrators.
       </p>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+}) {
+  return (
+    <div className="flex-1 px-5 py-4">
+      <dt className="text-xs font-medium tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-1 flex items-center gap-2">
+        {accent && <span className="size-2 rounded-full bg-primary" aria-hidden />}
+        <span className="text-2xl font-semibold tabular-nums">{value}</span>
+      </dd>
     </div>
   );
 }

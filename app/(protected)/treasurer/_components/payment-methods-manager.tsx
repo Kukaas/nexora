@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Banknote, ImageUp, QrCode, Trash2 } from "lucide-react";
+import { AlertCircle, Banknote, ImageUp, QrCode, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
@@ -24,13 +24,14 @@ export function PaymentMethodsManager({
   uploadsEnabled: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {!uploadsEnabled && (
-        <p className="rounded-3xl bg-accent px-4 py-3 text-sm text-accent-foreground">
-          QR uploads need Cloudinary credentials on the server. You can still
-          enter account details and accept cash; add the credentials to enable
-          image uploads.
-        </p>
+        <div className="flex items-center gap-3 rounded-4xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs font-medium text-amber-700 dark:text-amber-300 shadow-sm">
+          <AlertCircle className="size-5 shrink-0" />
+          <span>
+            QR image uploads require Cloudinary environment credentials. Account names, numbers, and cash desk instructions can still be configured and accepted.
+          </span>
+        </div>
       )}
       {methods.map((method) =>
         method.type === PaymentMethodType.CASH ? (
@@ -41,7 +42,7 @@ export function PaymentMethodsManager({
             method={method}
             uploadsEnabled={uploadsEnabled}
           />
-        ),
+        )
       )}
     </div>
   );
@@ -68,20 +69,20 @@ function ChannelShell({
 }) {
   const switchId = useId();
   return (
-    <section className="overflow-hidden rounded-4xl border border-border bg-card">
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
+    <section className="overflow-hidden rounded-4xl border border-border bg-card shadow-sm ring-1 ring-foreground/5 dark:ring-foreground/10">
+      <div className="flex items-center justify-between gap-4 p-5 sm:p-6 border-b border-border">
         <div className="flex items-center gap-3">
-          <span className="flex size-9 items-center justify-center rounded-2xl bg-muted text-foreground">
+          <div className="flex size-9 items-center justify-center rounded-2xl bg-accent text-accent-foreground">
             {icon}
-          </span>
+          </div>
           <div>
-            <h2 className="font-semibold tracking-tight">{title}</h2>
+            <h2 className="text-base font-semibold tracking-tight text-foreground">{title}</h2>
             <p className="text-xs text-muted-foreground">{hint}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Label htmlFor={switchId} className="text-xs text-muted-foreground">
-            {enabled ? "On" : "Off"}
+          <Label htmlFor={switchId} className="text-xs font-medium text-muted-foreground">
+            {enabled ? "Accepting" : "Disabled"}
           </Label>
           <Switch
             id={switchId}
@@ -92,8 +93,8 @@ function ChannelShell({
           />
         </div>
       </div>
-      <div className="border-t border-border px-5 py-5">{children}</div>
-      <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/40 px-5 py-3">
+      <div className="p-5 sm:p-6">{children}</div>
+      <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/20 p-4 sm:px-6">
         {footer}
       </div>
     </section>
@@ -119,8 +120,6 @@ function EwalletChannel({
   const [preview, setPreview] = useState<string | null>(method.qrImage);
   const [saving, setSaving] = useState(false);
 
-  // Track the live object URL so we can revoke it when it's replaced and on
-  // unmount, without creating object URLs from inside an effect.
   const blobUrlRef = useRef<string | null>(null);
   const showBlob = (next: File | null) => {
     if (blobUrlRef.current) {
@@ -139,7 +138,7 @@ function EwalletChannel({
     () => () => {
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
     },
-    [],
+    []
   );
 
   const label = METHOD_LABELS[method.type];
@@ -163,7 +162,7 @@ function EwalletChannel({
   const save = async () => {
     if (enabled && (!accountName.trim() || !accountNumber.trim() || !preview)) {
       toast.error(
-        `Add the account name, number, and a QR code before turning ${label} on.`,
+        `Add the account name, number, and a QR code before turning ${label} on.`
       );
       return;
     }
@@ -187,23 +186,23 @@ function EwalletChannel({
 
   return (
     <ChannelShell
-      icon={<QrCode className="size-5" />}
+      icon={<QrCode className="size-4.5" />}
       title={label}
-      hint="E-wallet transfer via QR code"
+      hint="E-wallet transfer via QR code and account details"
       enabled={enabled}
       onToggle={setEnabled}
       disabled={saving}
       footer={
-        <Button onClick={save} disabled={saving}>
-          {saving && <Spinner />}
-          Save {label}
+        <Button onClick={save} disabled={saving} className="rounded-2xl font-semibold">
+          {saving ? <Spinner /> : <Save className="mr-1.5 size-4" />}
+          Save {label} Channel
         </Button>
       }
     >
-      <div className="grid gap-6 sm:grid-cols-[1fr_auto]">
+      <div className="grid gap-6 sm:grid-cols-[1fr_auto] items-start">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor={nameId}>Account name</Label>
+            <Label htmlFor={nameId}>Account Name</Label>
             <Input
               id={nameId}
               value={accountName}
@@ -213,7 +212,7 @@ function EwalletChannel({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor={numberId}>Account number</Label>
+            <Label htmlFor={numberId}>Account / Mobile Number</Label>
             <Input
               id={numberId}
               value={accountNumber}
@@ -243,15 +242,16 @@ function EwalletChannel({
               <img
                 src={preview}
                 alt={`${label} QR code`}
-                className="size-40 rounded-3xl border border-border bg-white object-contain p-2"
+                className="size-44 rounded-3xl border border-border bg-white object-contain p-3 shadow-xs"
               />
-              <div className="flex gap-1">
+              <div className="flex items-center gap-1.5">
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => fileRef.current?.click()}
                   disabled={saving || !uploadsEnabled}
+                  className="rounded-2xl text-xs h-8"
                 >
                   Replace
                 </Button>
@@ -261,8 +261,9 @@ function EwalletChannel({
                   size="sm"
                   onClick={removeQr}
                   disabled={saving}
+                  className="rounded-2xl text-xs h-8 text-destructive hover:text-destructive"
                 >
-                  <Trash2 className="text-destructive" />
+                  <Trash2 className="size-3.5 mr-1" />
                   Remove
                 </Button>
               </div>
@@ -272,12 +273,10 @@ function EwalletChannel({
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={saving || !uploadsEnabled}
-              className={cn(
-                "flex size-40 flex-col items-center justify-center gap-2 rounded-3xl border border-dashed border-border bg-muted/40 px-4 text-center text-sm text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50",
-              )}
+              className="flex size-44 flex-col items-center justify-center gap-2 rounded-3xl border border-dashed border-border bg-muted/20 hover:bg-muted/40 transition-colors p-4 text-center text-xs text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/30 disabled:opacity-50"
             >
-              <ImageUp className="size-6" aria-hidden />
-              {uploadsEnabled ? "Upload QR code" : "Uploads disabled"}
+              <ImageUp className="size-6 text-primary" aria-hidden />
+              {uploadsEnabled ? "Upload QR Code Image" : "QR Uploads Disabled"}
             </button>
           )}
         </div>
@@ -306,37 +305,38 @@ function CashChannel({ method }: { method: PaymentMethodDTO }) {
       toast.error(result.error);
       return;
     }
-    toast.success("Cash saved.");
+    toast.success("Cash channel saved.");
     router.refresh();
   };
 
   return (
     <ChannelShell
-      icon={<Banknote className="size-5" />}
-      title="Cash"
-      hint="Paid in person at the barangay hall"
+      icon={<Banknote className="size-4.5" />}
+      title="Cash at Barangay Hall Desk"
+      hint="In-person cash payment at the barangay treasury counter"
       enabled={enabled}
       onToggle={setEnabled}
       disabled={saving}
       footer={
-        <Button onClick={save} disabled={saving}>
-          {saving && <Spinner />}
-          Save cash
+        <Button onClick={save} disabled={saving} className="rounded-2xl font-semibold">
+          {saving ? <Spinner /> : <Save className="mr-1.5 size-4" />}
+          Save Cash Channel
         </Button>
       }
     >
       <div className="flex flex-col gap-2">
-        <Label htmlFor={instructionsId}>Instructions for residents</Label>
+        <Label htmlFor={instructionsId}>Instructions for Residents</Label>
         <Textarea
           id={instructionsId}
           value={instructions}
           onChange={(e) => setInstructions(e.target.value)}
-          placeholder="Pay at the barangay hall, window 2. Open Monday to Friday, 8:00 AM to 5:00 PM. Bring the exact amount and your reference slip."
+          placeholder="Pay at the barangay hall, Treasury Window 2. Open Monday to Friday, 8:00 AM to 5:00 PM. Please bring the exact amount and present your reference slip."
           rows={3}
           disabled={saving}
+          className="min-h-[100px] resize-y"
         />
         <p className="text-xs text-muted-foreground">
-          Shown to residents who choose to pay in cash.
+          These payment instructions are displayed to residents who select the cash payment method.
         </p>
       </div>
     </ChannelShell>

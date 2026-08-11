@@ -2,10 +2,17 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Inbox, Search, SearchX } from "lucide-react";
+import { ChevronRight, Inbox, Search, SearchX, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Empty,
   EmptyDescription,
@@ -27,7 +34,7 @@ import {
   TableCard,
   useClientPagination,
 } from "@/components/ui/data-table";
-import { DocumentRequestStatus } from "@/app/generated/prisma/enums";
+import { DocumentRequestStatus, PaymentMethodType } from "@/app/generated/prisma/enums";
 import { requestHasPayment, type DocumentRequestDTO } from "@/lib/documents";
 import {
   formatDateTime,
@@ -56,8 +63,7 @@ export function DocumentFeesReview({
   basePath: string;
 }) {
   const [filter, setFilter] = useState<Filter>(DocumentRequestStatus.PENDING);
-  // Lookup by the reference number a walk-in resident brings on their payment
-  // slip (or by name). Searching cuts across every status.
+  const [methodFilter, setMethodFilter] = useState<string>("ALL");
   const [query, setQuery] = useState("");
 
   const counts = useMemo(() => {
@@ -75,19 +81,26 @@ export function DocumentFeesReview({
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    // A reference search should find the request whatever tab is open, so the
-    // status filter only applies while the search box is empty.
-    const pool = needle
-      ? requests.filter(
-          (r) =>
-            r.referenceNumber.toLowerCase().includes(needle) ||
-            r.requesterName.toLowerCase().includes(needle),
-        )
-      : filter === "ALL"
-        ? requests
-        : requests.filter((r) => r.status === filter);
+
+    let pool = requests;
+
+    if (needle) {
+      pool = pool.filter(
+        (r) =>
+          r.referenceNumber.toLowerCase().includes(needle) ||
+          r.requesterName.toLowerCase().includes(needle) ||
+          r.documentName.toLowerCase().includes(needle)
+      );
+    } else if (filter !== "ALL") {
+      pool = pool.filter((r) => r.status === filter);
+    }
+
+    if (methodFilter !== "ALL") {
+      pool = pool.filter((r) => r.method === methodFilter);
+    }
+
     return pool;
-  }, [requests, filter, query]);
+  }, [requests, filter, methodFilter, query]);
 
   const pg = useClientPagination(visible, 10);
 
@@ -99,65 +112,103 @@ export function DocumentFeesReview({
   const searching = query.trim().length > 0;
 
   return (
-    <section aria-label="Document fees">
-      <div className="relative mb-3">
-        <Search
-          className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden
-        />
-        <Input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            pg.setPage(1);
-          }}
-          placeholder="Search by reference number or name…"
-          aria-label="Search document fees"
-          className="ps-10"
-        />
-      </div>
+    <section aria-label="Document fees" className="flex flex-col gap-4">
+      {/* Integrated Toolbar Row */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between">
+          {/* Status Tab Bar Toolbar */}
+          <div
+            role="tablist"
+            aria-label="Filter document fees by status"
+            className={cn(
+              "flex flex-1 gap-1 overflow-x-auto rounded-3xl bg-muted p-1",
+              searching && "pointer-events-none opacity-50"
+            )}
+          >
+            {FILTERS.map((f) => {
+              const active = filter === f.value;
+              return (
+                <button
+                  key={f.value}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => selectFilter(f.value)}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-2 rounded-[1.25rem] px-3 py-2 text-sm font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/30",
+                    active
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f.label}
+                  <span
+                    className={cn(
+                      "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums",
+                      active
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-border/70 text-muted-foreground"
+                    )}
+                  >
+                    {counts[f.value]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* Filter tabs */}
-      <div
-        role="tablist"
-        aria-label="Filter document fees by status"
-        className={cn(
-          "flex w-full gap-1 overflow-x-auto rounded-3xl bg-muted p-1",
-          searching && "pointer-events-none opacity-50",
-        )}
-      >
-        {FILTERS.map((f) => {
-          const active = filter === f.value;
-          return (
-            <button
-              key={f.value}
-              role="tab"
-              aria-selected={active}
-              onClick={() => selectFilter(f.value)}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-[1.25rem] px-3 py-2 text-sm font-medium whitespace-nowrap outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/30",
-                active
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+          {/* Search & Method Filter */}
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-44 sm:w-60">
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  pg.setPage(1);
+                }}
+                placeholder="Search reference # or resident..."
+                aria-label="Search document fees"
+                className="ps-9 pe-8 h-9 text-xs rounded-2xl bg-background border-border"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    pg.setPage(1);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
               )}
+            </div>
+
+            <Select
+              value={methodFilter}
+              onValueChange={(v) => {
+                setMethodFilter(v);
+                pg.setPage(1);
+              }}
             >
-              {f.label}
-              <span
-                className={cn(
-                  "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs tabular-nums",
-                  active
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-border/70 text-muted-foreground",
-                )}
-              >
-                {counts[f.value]}
-              </span>
-            </button>
-          );
-        })}
+              <SelectTrigger className="h-9 w-[140px] text-xs rounded-2xl">
+                <SelectValue placeholder="All Methods" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Methods</SelectItem>
+                <SelectItem value={PaymentMethodType.CASH}>Cash Desk</SelectItem>
+                <SelectItem value={PaymentMethodType.GCASH}>GCash QR</SelectItem>
+                <SelectItem value={PaymentMethodType.MAYA}>Maya QR</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
-      {/* List */}
+      {/* List / Table */}
       {visible.length === 0 ? (
         searching ? (
           <EmptySearchState query={query} />
@@ -165,26 +216,26 @@ export function DocumentFeesReview({
           <EmptyFilterState filter={filter} />
         )
       ) : (
-        <>
-          {/* Table — tablet and up */}
-          <TableCard className="mt-5 hidden md:block">
+        <div className="flex flex-col gap-4">
+          {/* Table — desktop */}
+          <TableCard className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="h-11 ps-5 text-xs font-medium tracking-wide text-muted-foreground">
-                    Resident
+                    Resident / Reference #
                   </TableHead>
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
-                    Document
+                    Document Type
                   </TableHead>
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
-                    Submitted
+                    Submitted Date
                   </TableHead>
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
                     Method
                   </TableHead>
                   <TableHead className="h-11 text-right text-xs font-medium tracking-wide text-muted-foreground">
-                    Fee
+                    Fee Amount
                   </TableHead>
                   <TableHead className="h-11 text-xs font-medium tracking-wide text-muted-foreground">
                     Status
@@ -206,7 +257,7 @@ export function DocumentFeesReview({
                           aria-label={`${r.documentName} for ${r.requesterName}`}
                           className="rounded-sm outline-none after:absolute after:inset-0 focus-visible:ring-3 focus-visible:ring-inset focus-visible:ring-ring/30"
                         >
-                          <span className="inline-flex items-center gap-2">
+                          <span className="inline-flex items-center gap-2 text-foreground">
                             {r.requesterName}
                             {r.walkIn && <WalkInBadge />}
                           </span>
@@ -215,10 +266,10 @@ export function DocumentFeesReview({
                           {r.referenceNumber}
                         </p>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-muted-foreground font-medium">
                         {r.documentName}
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground tabular-nums">
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">
                         {formatDateTime(r.createdAt)}
                       </TableCell>
                       <TableCell>
@@ -230,7 +281,7 @@ export function DocumentFeesReview({
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-mono tabular-nums">
+                      <TableCell className="text-right font-mono font-semibold text-foreground tabular-nums">
                         {paid ? formatPeso(r.fee) : "Free"}
                       </TableCell>
                       <TableCell>
@@ -249,8 +300,8 @@ export function DocumentFeesReview({
             </Table>
           </TableCard>
 
-          {/* Stacked rows — phones */}
-          <ul className="mt-5 divide-y divide-border overflow-hidden rounded-4xl border border-border bg-card md:hidden">
+          {/* Stacked cards list — mobile */}
+          <ul className="divide-y divide-border overflow-hidden rounded-4xl border border-border bg-card md:hidden shadow-sm">
             {pg.visible.map((r) => (
               <li key={r.id}>
                 <Link
@@ -259,7 +310,7 @@ export function DocumentFeesReview({
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">
+                      <span className="truncate font-medium text-foreground">
                         {r.requesterName}
                       </span>
                       {r.walkIn && <WalkInBadge className="shrink-0" />}
@@ -281,7 +332,7 @@ export function DocumentFeesReview({
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    <span className="font-mono text-sm font-medium tabular-nums">
+                    <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
                       {requestHasPayment(r) ? formatPeso(r.fee) : "Free"}
                     </span>
                     <RequestStatusBadge status={r.status} />
@@ -295,20 +346,18 @@ export function DocumentFeesReview({
             ))}
           </ul>
 
-          <div className="mt-5">
-            <DataPagination
-              page={pg.page}
-              pageCount={pg.pageCount}
-              pageSize={pg.pageSize}
-              pageSizeOptions={DEFAULT_PAGE_SIZE_OPTIONS}
-              total={pg.total}
-              from={pg.from}
-              to={pg.to}
-              onPageChange={pg.setPage}
-              onPageSizeChange={pg.setPageSize}
-            />
-          </div>
-        </>
+          <DataPagination
+            page={pg.page}
+            pageCount={pg.pageCount}
+            pageSize={pg.pageSize}
+            pageSizeOptions={DEFAULT_PAGE_SIZE_OPTIONS}
+            total={pg.total}
+            from={pg.from}
+            to={pg.to}
+            onPageChange={pg.setPage}
+            onPageSizeChange={pg.setPageSize}
+          />
+        </div>
       )}
     </section>
   );
@@ -316,7 +365,7 @@ export function DocumentFeesReview({
 
 function EmptySearchState({ query }: { query: string }) {
   return (
-    <Empty className="mt-5 rounded-4xl border border-dashed border-border bg-card/50">
+    <Empty className="rounded-4xl border border-dashed border-border bg-card/50">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <SearchX />
@@ -324,7 +373,7 @@ function EmptySearchState({ query }: { query: string }) {
         <EmptyTitle>No match for &ldquo;{query.trim()}&rdquo;</EmptyTitle>
         <EmptyDescription>
           Check the reference number on the slip — it looks like
-          BRGY-2026-12345 — or try the resident&apos;s name.
+          BRGY-2026-12345 — or try searching by resident name or document title.
         </EmptyDescription>
       </EmptyHeader>
     </Empty>
@@ -365,7 +414,7 @@ function EmptyFilterState({ filter }: { filter: Filter }) {
   };
   const { title, description } = copy[filter];
   return (
-    <Empty className="mt-5 rounded-4xl border border-dashed border-border bg-card/50">
+    <Empty className="rounded-4xl border border-dashed border-border bg-card/50">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <Inbox />

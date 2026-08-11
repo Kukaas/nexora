@@ -142,14 +142,15 @@ export function SignInForm() {
     setFormError(null);
     setUnverifiedEmail(null);
     setIsGoogleLoading(true);
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
     const { error } = await authClient.signIn.social({
       provider: "google",
       // /start resolves the user's role and forwards them to their home.
-      callbackURL: "/start",
+      callbackURL: `${origin}/start`,
       // If Google's email collides with an existing password account, Better
       // Auth bounces back here with `?error=account_not_linked` instead of
       // signing in; the effect above turns that into a readable message.
-      errorCallbackURL: "/sign-in",
+      errorCallbackURL: `${origin}/sign-in`,
     });
     // On success the browser redirects to Google, so we only reach here on error.
     if (error) {

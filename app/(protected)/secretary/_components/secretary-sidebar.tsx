@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Building2,
   FileText,
   LayoutDashboard,
   Megaphone,
   MessagesSquare,
   ScrollText,
+  ShieldAlert,
 } from "lucide-react";
 
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
@@ -42,6 +44,8 @@ export function SecretarySidebar({
   const requests = `${home}/requests`;
   const documents = `${home}/documents`;
   const announcements = `${home}/announcements`;
+  const blotter = `${home}/blotter`;
+  const households = `${home}/households`;
 
   const closeOnMobile = () => {
     if (isMobile) setOpenMobile(false);
@@ -110,6 +114,32 @@ export function SecretarySidebar({
                   <Link href={documents} onClick={closeOnMobile}>
                     <ScrollText />
                     <span>Documents</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(blotter)}
+                  tooltip="Blotter & Cases"
+                >
+                  <Link href={blotter} onClick={closeOnMobile}>
+                    <ShieldAlert />
+                    <span>Blotter & Cases</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(households)}
+                  tooltip="Households & Census"
+                >
+                  <Link href={households} onClick={closeOnMobile}>
+                    <Building2 />
+                    <span>Households & Census</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

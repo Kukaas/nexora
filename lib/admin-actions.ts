@@ -148,7 +148,7 @@ export async function createOfficial(
           firstName,
           middleName,
           lastName,
-          emailVerified: false,
+          emailVerified: true,
           purok,
           // Force them to replace the temporary password on first sign-in.
           mustChangePassword: true,

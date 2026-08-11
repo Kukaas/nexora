@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -52,6 +52,8 @@ type Values = z.infer<typeof schema>;
 
 export function ResubmitIdForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("redirect") || "/resident";
   const typeId = useId();
   const numberId = useId();
   const [formError, setFormError] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export function ResubmitIdForm() {
       return;
     }
     toast.success("New ID submitted. The barangay will review it shortly.");
-    router.push("/resident");
+    router.push(returnUrl);
     router.refresh();
   };
 

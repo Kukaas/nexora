@@ -16,14 +16,27 @@ const googleProvider =
       }
     : undefined;
 
+const isDev = process.env.NODE_ENV !== "production";
+const devBaseUrl = `http://localhost:${process.env.PORT || 3001}`;
+
+if (isDev) {
+  process.env.BETTER_AUTH_URL = devBaseUrl;
+  process.env.NEXT_PUBLIC_BETTER_AUTH_URL = devBaseUrl;
+}
+
+const configuredBaseUrl = process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_BETTER_AUTH_URL;
+
 export const auth = betterAuth({
-  baseURL:
-    process.env.BETTER_AUTH_URL ??
-    process.env.NEXT_PUBLIC_BETTER_AUTH_URL ??
-    "https://nexora.kukaass.app",
+  baseURL: isDev ? devBaseUrl : configuredBaseUrl ?? "https://nexora.kukaass.app",
   trustedOrigins: [
     "https://nexora.kukaass.app",
     "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3002",
+    ...(process.env.PORT ? [`http://localhost:${process.env.PORT}`, `http://127.0.0.1:${process.env.PORT}`] : []),
   ],
   database: prismaAdapter(prisma, {
     provider: "postgresql",

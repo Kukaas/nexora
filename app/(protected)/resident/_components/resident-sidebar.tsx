@@ -10,6 +10,8 @@ import {
   Lock,
   Megaphone,
   MessagesSquare,
+  Shield,
+  Siren,
   UserRound,
 } from "lucide-react";
 
@@ -148,6 +150,32 @@ export function ResidentSidebar({
                   </SidebarMenuBadge>
                 )}
               </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(`${home}/incidents`) && pathname !== `${home}/incidents/new`}
+                  tooltip="Incident reports"
+                >
+                  <Link href={`${home}/incidents`} onClick={closeOnMobile}>
+                    <Siren />
+                    <span>Incident reports</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(`${home}/blotter`) && pathname !== `${home}/blotter/new`}
+                  tooltip="My blotter reports"
+                >
+                  <Link href={`${home}/blotter`} onClick={closeOnMobile}>
+                    <Shield />
+                    <span>My blotter reports</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -172,9 +200,6 @@ export function ResidentSidebar({
                     </Link>
                   </SidebarMenuButton>
                 ) : (
-                  // Locked until an official approves the resident's ID. Rendered
-                  // as a disabled button (not a link) so it can't be navigated to,
-                  // with a tooltip explaining why.
                   <SidebarMenuButton
                     disabled
                     aria-disabled
@@ -183,6 +208,58 @@ export function ResidentSidebar({
                   >
                     <FilePlus2 />
                     <span>Request a document</span>
+                    <Lock className="ml-auto size-3.5 text-muted-foreground" />
+                  </SidebarMenuButton>
+                )}
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                {verified ? (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === `${home}/incidents/new`}
+                    tooltip="Report community incident"
+                  >
+                    <Link href={`${home}/incidents/new`} onClick={closeOnMobile}>
+                      <Siren />
+                      <span>Report an incident</span>
+                    </Link>
+                  </SidebarMenuButton>
+                ) : (
+                  <SidebarMenuButton
+                    disabled
+                    aria-disabled
+                    tooltip="Verify your ID first to report incidents"
+                    className="cursor-not-allowed opacity-50"
+                  >
+                    <Siren />
+                    <span>Report an incident</span>
+                    <Lock className="ml-auto size-3.5 text-muted-foreground" />
+                  </SidebarMenuButton>
+                )}
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                {verified ? (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === `${home}/blotter/new`}
+                    tooltip="File formal blotter report"
+                  >
+                    <Link href={`${home}/blotter/new`} onClick={closeOnMobile}>
+                      <Shield />
+                      <span>File blotter report</span>
+                    </Link>
+                  </SidebarMenuButton>
+                ) : (
+                  <SidebarMenuButton
+                    disabled
+                    aria-disabled
+                    tooltip="Verify your ID first to file blotter reports"
+                    className="cursor-not-allowed opacity-50"
+                  >
+                    <Shield />
+                    <span>File blotter report</span>
                     <Lock className="ml-auto size-3.5 text-muted-foreground" />
                   </SidebarMenuButton>
                 )}

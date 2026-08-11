@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../app/generated/prisma"
@@ -47,8 +45,104 @@ model User {
   conversation                    Conversation?     @relation("ConversationResident")
   sentMessages                    Message[]         @relation("MessageSender")
 
+  householdId                     String?           @map("household_id")
+  household                       Household?        @relation("HouseholdMembers", fields: [householdId], references: [id], onDelete: SetNull)
+  headedHousehold                 Household?        @relation("HouseholdHead")
+  relationshipToHead              HouseholdRole?    @map("relationship_to_head")
+
+  isSenior                        Boolean           @default(false) @map("is_senior")
+  isPWD                           Boolean           @default(false) @map("is_pwd")
+  isSoloParent                    Boolean           @default(false) @map("is_solo_parent")
+  is4PsBeneficiary                 Boolean           @default(false) @map("is_4ps_beneficiary")
+
+  complainantBlotters             BlotterRecord[]   @relation("BlotterComplainant")
+  officerBlotters                 BlotterRecord[]   @relation("BlotterOfficer")
+  reportedIncidents               IncidentReport[]  @relation("IncidentReporter")
+
   @@unique([email])
   @@map("user")
+}
+
+model Household {
+  id                              String            @id @default(uuid())
+  householdNumber                 String            @unique @map("household_number")
+  purok                           Purok             @map("purok")
+  streetAddress                   String            @map("street_address")
+
+  headId                          String?           @unique @map("head_id")
+  head                            User?             @relation("HouseholdHead", fields: [headId], references: [id], onDelete: SetNull)
+  members                         User[]            @relation("HouseholdMembers")
+
+  is4Ps                           Boolean           @default(false) @map("is_4ps")
+  isIndigent                      Boolean           @default(false) @map("is_indigent")
+  hasSenior                       Boolean           @default(false) @map("has_senior")
+  hasPWD                          Boolean           @default(false) @map("has_pwd")
+  hasSoloParent                   Boolean           @default(false) @map("has_solo_parent")
+
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
+
+  @@index([purok])
+  @@map("household")
+}
+
+model BlotterRecord {
+  id                              String            @id @default(uuid())
+  caseNumber                      String            @unique @map("case_number")
+  incidentType                    IncidentType      @map("incident_type")
+  incidentDate                    DateTime          @map("incident_date")
+  incidentLocation                String            @map("incident_location")
+
+  complainantId                   String?           @map("complainant_id")
+  complainant                     User?             @relation("BlotterComplainant", fields: [complainantId], references: [id], onDelete: SetNull)
+  complainantName                 String            @map("complainant_name")
+  complainantContact              String?           @map("complainant_contact")
+
+  respondentName                  String            @map("respondent_name")
+  respondentAddress               String?           @map("respondent_address")
+
+  narrative                       String            @db.Text
+  status                          BlotterStatus     @default(FILED)
+  hearingDate                     DateTime?         @map("hearing_date")
+  resolutionNotes                 String?           @db.Text @map("resolution_notes")
+
+  officerInChargeId               String?           @map("officer_in_charge_id")
+  officerInCharge                 User?             @relation("BlotterOfficer", fields: [officerInChargeId], references: [id], onDelete: SetNull)
+
+  isConfidential                  Boolean           @default(false) @map("is_confidential")
+  attachmentUrl                   String?           @map("attachment_url")
+
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([incidentType])
+  @@map("blotter_record")
+}
+
+model IncidentReport {
+  id                              String            @id @default(uuid())
+  reportNumber                    String            @unique @map("report_number")
+  title                           String
+  category                        String
+  incidentDate                    DateTime          @map("incident_date")
+  location                        String
+  description                     String            @db.Text
+  attachmentUrl                   String?           @map("attachment_url")
+  status                          String            @default("SUBMITTED")
+  adminNotes                      String?           @db.Text @map("admin_notes")
+
+  reporterId                      String?           @map("reporter_id")
+  reporter                        User?             @relation("IncidentReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  reporterName                    String            @map("reporter_name")
+  reporterContact                 String?           @map("reporter_contact")
+
+  createdAt                       DateTime          @default(now()) @map("created_at")
+  updatedAt                       DateTime          @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([category])
+  @@map("incident_report")
 }
 
 model Session {
@@ -58,7 +152,6 @@ model Session {
   userAgent                       String?           @map("user_agent")
 
   userId                          String            @map("user_id")
-
   user                            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   expiresAt                       DateTime          @map("expires_at")
@@ -203,10 +296,6 @@ model DocumentRequest {
   id                               String           @id @default(uuid())
   referenceNumber                  String           @map("reference_number")
 
-  /// Unguessable public token for QR verification. Anyone holding the printed
-  /// document can scan its QR (which encodes /verify/<code>) to confirm the
-  /// document is genuine — the reference number is enumerable, this is not.
-  /// Nullable so it can be backfilled; new requests always get one at creation.
   verificationCode                 String?          @unique @map("verification_code")
 
   documentTypeId                   String?          @map("document_type_id")
@@ -227,8 +316,6 @@ model DocumentRequest {
   note                             String?
   resubmitNote                     String?          @map("resubmit_note")
 
-  /// Null for a walk-in request the secretary encodes at the desk for a
-  /// resident without an account.
   requesterId                      String?          @map("requester_id")
   requester                        User?            @relation("DocumentRequester", fields: [requesterId], references: [id], onDelete: Cascade)
   requesterName                    String           @map("requester_name")
@@ -272,7 +359,6 @@ model Announcement {
   startTime                        String?           @map("start_time")
   endTime                          String?           @map("end_time")
   imageUrl                         String?           @map("image_url")
-  /// The purok this notice targets; null means barangay-wide.
   purok                            Purok?            @map("purok")
 
   authorId                         String?           @map("author_id")
@@ -286,8 +372,6 @@ model Announcement {
   @@map("announcement")
 }
 
-/// The barangay message desk. One conversation per resident; any official can
-/// read and reply. Read timestamps drive the unread indicators on each side.
 model Conversation {
   id                               String            @id @default(uuid())
   residentId                       String            @unique @map("resident_id")
@@ -324,6 +408,34 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@map("message")
+}
+
+enum HouseholdRole {
+  HEAD
+  SPOUSE
+  CHILD
+  PARENT
+  RELATIVE
+  OTHER
+}
+
+enum BlotterStatus {
+  FILED
+  MEDIATION_SCHEDULED
+  SETTLED
+  DISMISSED
+  ESCALATED_TO_PNP
+}
+
+enum IncidentType {
+  NEIGHBOR_DISPUTE
+  NOISE_COMPLAINT
+  PHYSICAL_INJURY
+  PROPERTY_DAMAGE
+  THEFT
+  THREATS
+  DOMESTIC
+  OTHER
 }
 
 enum MessageKind {

@@ -65,18 +65,20 @@ export default async function ResidentsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
+      <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight text-balance">
-          Residents
+          Resident Directory & Verification
         </h1>
-        <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-          Community members who registered for an account. They appear here once
-          they sign up; their status follows them from email confirmation
-          through finishing setup.
+        <p className="max-w-prose text-sm text-muted-foreground text-pretty">
+          Manage registered community members, verify submitted government IDs, and monitor account activation statuses.
         </p>
       </header>
 
       <ResidentsTable residents={rows} />
+
+      <p className="text-xs text-muted-foreground">
+        {rows.length} {rows.length === 1 ? "resident" : "residents"} registered in the barangay portal directory.
+      </p>
     </div>
   );
 }

@@ -47,7 +47,7 @@ const ID_TYPES = [
   { value: "OTHERS", label: "Other government ID" },
 ] as const;
 
-const PH_MOBILE = /^(09\d{9}|\+?639\d{8})$/;
+const PH_MOBILE_DIGITS = /^\d{10}$/;
 
 const setupSchema = z.object({
   purok: z.string().min(1, "Choose your purok."),
@@ -62,8 +62,8 @@ const setupSchema = z.object({
     .trim()
     .min(1, "Enter your mobile number.")
     .refine(
-      (v) => PH_MOBILE.test(v.replace(/[\s\-()]/g, "")),
-      "Enter a valid PH mobile number, e.g. 0917 123 4567.",
+      (v) => PH_MOBILE_DIGITS.test(v.replace(/[\s\-()]/g, "")),
+      "Enter all 10 digits after +63 (e.g. 9123456789).",
     ),
   idType: z.string().min(1, "Choose your ID type."),
   idNumber: z.string().trim().min(1, "Enter your ID number."),
@@ -124,6 +124,7 @@ export function SetupForm({ email }: { email: string }) {
     setFormError(null);
     const payload: SetupInput = {
       ...values,
+      mobileNumber: `0${values.mobileNumber}`,
       birthDate: format(values.birthDate, "yyyy-MM-dd"),
       idType: values.idType as SetupInput["idType"],
       purok: values.purok as SetupInput["purok"],
@@ -316,21 +317,37 @@ export function SetupForm({ email }: { email: string }) {
 
             <Field data-invalid={!!errors.mobileNumber}>
               <FieldLabel htmlFor={ids.mobile}>Mobile number</FieldLabel>
-              <Input
-                id={ids.mobile}
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                aria-invalid={!!errors.mobileNumber}
-                disabled={isSubmitting}
-                placeholder="0917 123 4567"
-                {...register("mobileNumber")}
+              <Controller
+                control={control}
+                name="mobileNumber"
+                render={({ field }) => (
+                  <div className="flex h-10 w-full overflow-hidden rounded-2xl border border-border bg-background focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/30">
+                    <span className="flex items-center justify-center bg-muted/60 px-3.5 font-mono font-bold text-xs text-primary border-e border-border shrink-0 select-none">
+                      +63
+                    </span>
+                    <input
+                      id={ids.mobile}
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      maxLength={10}
+                      placeholder="9123456789"
+                      aria-invalid={!!errors.mobileNumber}
+                      disabled={isSubmitting}
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      onBlur={field.onBlur}
+                      ref={field.ref}
+                      className="flex-1 bg-transparent px-3 text-xs font-mono text-foreground outline-none border-none placeholder:text-muted-foreground"
+                    />
+                  </div>
+                )}
               />
               {errors.mobileNumber ? (
                 <FieldError>{errors.mobileNumber.message}</FieldError>
               ) : (
                 <FieldDescription>
-                  We&apos;ll text you here about your requests.
+                  The prefix <span className="font-mono font-semibold text-primary">+63</span> is fixed. Enter the remaining 10 digits.
                 </FieldDescription>
               )}
             </Field>

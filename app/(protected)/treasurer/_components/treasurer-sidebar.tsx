@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, MessagesSquare, QrCode, Receipt } from "lucide-react";
+import { FileSpreadsheet, LayoutDashboard, MessagesSquare, QrCode, Receipt } from "lucide-react";
 
 import { NexoraGlyph } from "@/app/(auth)/_components/nexora-mark";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,6 +35,7 @@ export function TreasurerSidebar({
   const home = `/treasurer/${user.id}`;
   const payments = `${home}/payments`;
   const methods = `${home}/methods`;
+  const coaReports = `${home}/coa-reports`;
 
   const closeOnMobile = () => {
     if (isMobile) setOpenMobile(false);
@@ -103,6 +104,19 @@ export function TreasurerSidebar({
                   <Link href={methods} onClick={closeOnMobile}>
                     <QrCode />
                     <span>Payment methods</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(coaReports)}
+                  tooltip="COA Reports"
+                >
+                  <Link href={coaReports} onClick={closeOnMobile}>
+                    <FileSpreadsheet />
+                    <span>COA Reports</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
