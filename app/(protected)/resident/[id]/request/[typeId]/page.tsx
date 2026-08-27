@@ -9,7 +9,11 @@ import {
 } from "@/lib/documents-data";
 import { isCloudinaryConfigured } from "@/lib/cloudinary";
 import { PUROK_LABELS } from "@/lib/purok";
-import { RequestForm, type ProfileInfo } from "../../../_components/request-form";
+import {
+  RequestForm,
+  buildProfileInfo,
+  type ProfileInfo,
+} from "../../../_components/request-form";
 
 export const metadata: Metadata = {
   title: "Request a document · Barangay Libtangin",
@@ -43,23 +47,8 @@ export default async function ResidentRequestPage({
 
   const uploadsEnabled = isCloudinaryConfigured();
 
-  // Build a lightweight profile summary for the pre-fill button
-  const profileInfo: ProfileInfo | undefined = profile
-    ? {
-        fullName: [profile.firstName, profile.middleName, profile.lastName]
-          .filter(Boolean)
-          .join(" "),
-        firstName: profile.firstName ?? "",
-        middleName: profile.middleName ?? "",
-        lastName: profile.lastName ?? "",
-        mobileNumber: profile.mobileNumber ?? "",
-        purok: profile.purok ? PUROK_LABELS[profile.purok] : "",
-        birthDate: profile.birthDate ?? "",
-        address: profile.purok
-          ? `${PUROK_LABELS[profile.purok]}, Barangay Libtangin`
-          : "",
-      }
-    : undefined;
+  // Build profile summary for dynamic field pre-filling
+  const profileInfo: ProfileInfo | undefined = buildProfileInfo(profile);
 
   return (
     <RequestForm

@@ -57,31 +57,58 @@ const INCIDENT_TYPES: { value: IncidentType; label: string; description: string 
   { value: "OTHER", label: "Other Incident", description: "Any other community incident requiring official blotter documentation." },
 ];
 
+export interface ResidentBlotterInitialValues {
+  incidentType?: IncidentType;
+  incidentLocation?: string;
+  respondentName?: string;
+  respondentAddress?: string;
+  contactDigits?: string;
+  narrative?: string;
+  isConfidential?: boolean;
+  attachmentUrl?: string | null;
+  attachmentName?: string | null;
+  attachmentSize?: number | null;
+}
+
 export function ResidentBlotterForm({
   residentId,
+  complainantName,
   defaultContact,
+  defaultPurok,
   verified = true,
+  initialValues,
 }: {
   residentId: string;
+  complainantName?: string;
   defaultContact?: string;
+  defaultPurok?: string;
   verified?: boolean;
+  initialValues?: ResidentBlotterInitialValues;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [incidentType, setIncidentType] = useState<IncidentType>("NEIGHBOR_DISPUTE");
-  const [incidentLocation, setIncidentLocation] = useState("");
-  const [respondentName, setRespondentName] = useState("");
-  const [respondentAddress, setRespondentAddress] = useState("");
+  const [incidentType, setIncidentType] = useState<IncidentType>(
+    initialValues?.incidentType ?? "NEIGHBOR_DISPUTE"
+  );
+  const [incidentLocation, setIncidentLocation] = useState(
+    initialValues?.incidentLocation ?? defaultPurok ?? ""
+  );
+  const [respondentName, setRespondentName] = useState(
+    initialValues?.respondentName ?? ""
+  );
+  const [respondentAddress, setRespondentAddress] = useState(
+    initialValues?.respondentAddress ?? ""
+  );
   const [contactDigits, setContactDigits] = useState(() => {
-    const dc = defaultContact ?? "";
-    return dc.replace(/^0/, "").slice(0, 10);
+    const raw = initialValues?.contactDigits || defaultContact || "";
+    return raw.replace(/^0/, "").replace(/^\+63/, "").slice(0, 10);
   });
 
-  // Pre-fill helpers: detect when phone matches the profile value
+  // Pre-fill helpers: detect when phone/location match profile values
   const profileDigits = useMemo(
-    () => (defaultContact ? defaultContact.replace(/^0/, "").slice(0, 10) : ""),
+    () => (defaultContact ? defaultContact.replace(/^0/, "").replace(/^\+63/, "").slice(0, 10) : ""),
     [defaultContact],
   );
   const isPhonePrefilled = contactDigits === profileDigits && profileDigits.length > 0;
@@ -89,8 +116,27 @@ export function ResidentBlotterForm({
     () => setContactDigits(profileDigits),
     [profileDigits],
   );
-  const [narrative, setNarrative] = useState("");
-  const [isConfidential, setIsConfidential] = useState(false);
+
+  const isLocationPrefilled = incidentLocation === defaultPurok && !!defaultPurok;
+  const restoreDefaultPurok = useCallback(() => {
+    if (defaultPurok) setIncidentLocation(defaultPurok);
+  }, [defaultPurok]);
+
+  const hasPrefilledData = useMemo(() => {
+    return !!(
+      initialValues?.incidentType ||
+      initialValues?.incidentLocation ||
+      initialValues?.respondentName ||
+      initialValues?.narrative ||
+      initialValues?.contactDigits ||
+      initialValues?.attachmentUrl ||
+      isLocationPrefilled ||
+      isPhonePrefilled
+    );
+  }, [initialValues, isLocationPrefilled, isPhonePrefilled]);
+
+  const [narrative, setNarrative] = useState(initialValues?.narrative ?? "");
+  const [isConfidential, setIsConfidential] = useState(initialValues?.isConfidential ?? false);
 
   // Redesigned Custom Date & Time State
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -109,9 +155,11 @@ export function ResidentBlotterForm({
   );
 
   const [uploadingProof, setUploadingProof] = useState(false);
-  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
-  const [attachmentName, setAttachmentName] = useState<string | null>(null);
-  const [attachmentSize, setAttachmentSize] = useState<number | null>(null);
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(initialValues?.attachmentUrl ?? null);
+  const [attachmentName, setAttachmentName] = useState<string | null>(
+    initialValues?.attachmentName ?? (initialValues?.attachmentUrl ? "Attached_Proof_Document" : null)
+  );
+  const [attachmentSize, setAttachmentSize] = useState<number | null>(initialValues?.attachmentSize ?? null);
 
   // Synchronized incidentDate in ISO YYYY-MM-DDTHH:mm format
   const incidentDate = useMemo(() => {
@@ -235,6 +283,55 @@ export function ResidentBlotterForm({
           </div>
         </div>
       )}
+
+      {/* Prefill Info Banner */}
+      {hasPrefilledData && (
+        <div className="flex items-center gap-3 rounded-3xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-900 dark:text-emerald-200 shadow-xs">
+          <Sparkles className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <span className="flex-1">
+            Form details have been pre-filled from your registered profile and request details. Feel free to review or adjust any fields.
+          </span>
+        </div>
+      )}
+
+      {/* Complainant Identity Summary */}
+      <section className="flex flex-col gap-5 rounded-4xl border border-border bg-card p-6 shadow-sm ring-1 ring-foreground/5 dark:ring-foreground/10">
+        <div className="flex items-start gap-3 border-b border-border pb-4">
+          <div className="flex size-9 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
+            <User className="size-4" aria-hidden />
+          </div>
+          <div className="flex flex-col gap-0.5 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-semibold tracking-tight text-foreground">
+                Complainant Information (Filing Resident)
+              </h2>
+              <Badge variant="secondary" className="rounded-full text-xs font-normal border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                <CheckCircle2 className="mr-1 size-3" /> Profile Auto-Attached
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your verified resident credentials are automatically associated with this official barangay blotter case.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="flex flex-col gap-1 rounded-3xl bg-muted/40 p-3.5 border border-border/50">
+            <span className="text-[11px] font-medium text-muted-foreground">Complainant Full Name</span>
+            <span className="text-xs font-semibold text-foreground">{complainantName || "Verified Resident"}</span>
+          </div>
+          <div className="flex flex-col gap-1 rounded-3xl bg-muted/40 p-3.5 border border-border/50">
+            <span className="text-[11px] font-medium text-muted-foreground">Registered Address</span>
+            <span className="text-xs font-semibold text-foreground">{defaultPurok || "Barangay Libtangin"}</span>
+          </div>
+          <div className="flex flex-col gap-1 rounded-3xl bg-muted/40 p-3.5 border border-border/50">
+            <span className="text-[11px] font-medium text-muted-foreground">Contact Number</span>
+            <span className="text-xs font-semibold text-foreground font-mono">
+              {contactDigits ? `+63 ${contactDigits}` : "Not provided in profile"}
+            </span>
+          </div>
+        </div>
+      </section>
 
       {/* Categorized Multi-Column Section Grid */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -583,13 +680,25 @@ export function ResidentBlotterForm({
               </div>
 
               <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="incidentLocation"
-                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
-                >
-                  <MapPin className="size-3.5 text-muted-foreground" aria-hidden />
-                  Incident Location / Area <span className="text-destructive">*</span>
-                </label>
+                <div className="flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="incidentLocation"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                  >
+                    <MapPin className="size-3.5 text-muted-foreground" aria-hidden />
+                    Incident Location / Area <span className="text-destructive">*</span>
+                  </label>
+                  {defaultPurok && incidentLocation !== defaultPurok && (
+                    <button
+                      type="button"
+                      onClick={restoreDefaultPurok}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline cursor-pointer"
+                    >
+                      <Sparkles className="size-3 shrink-0" aria-hidden />
+                      Use my Purok
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="incidentLocation"
                   type="text"
@@ -599,6 +708,12 @@ export function ResidentBlotterForm({
                   onChange={(e) => setIncidentLocation(e.target.value)}
                   className="h-10 rounded-2xl text-xs bg-background border-border"
                 />
+                {isLocationPrefilled && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="size-3 shrink-0" aria-hidden />
+                    Pre-filled with your registered Purok
+                  </p>
+                )}
               </div>
             </div>
           </section>

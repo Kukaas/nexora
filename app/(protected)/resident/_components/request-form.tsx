@@ -32,37 +32,130 @@ import {
   updateDocumentRequest,
 } from "@/lib/document-actions";
 
+import { PUROK_LABELS } from "@/lib/purok";
+
 /**
- * Lightweight subset of the resident's profile passed from the server page.
- * Used by the pre-fill button to populate dynamic document fields that match
- * common personal-info labels (e.g. "Full Name", "Address", "Date of Birth").
+ * Subset of the resident's profile passed from the server page.
+ * Used to populate dynamic document fields matching personal-info labels.
  */
 export type ProfileInfo = {
   fullName: string;
   firstName: string;
   middleName: string;
   lastName: string;
+  email: string;
   mobileNumber: string;
-  purok: string;
-  birthDate: string;
+  purokLabel: string;
+  purokRaw: string;
   address: string;
+  birthDateIso: string;
+  birthDateFormatted: string;
+  age: string;
+  idType: string;
+  idNumber: string;
 };
 
 /**
- * Try to match a document field label to profile data. Uses case-insensitive
- * keyword matching on common barangay document field names.
+ * Builds a structured ProfileInfo object from a ResidentProfile server record.
  */
-function matchFieldToProfile(
-  label: string,
-  fieldType: string,
+export function buildProfileInfo(profile: any): ProfileInfo | undefined {
+  if (!profile) return undefined;
+
+  const rawBirth = profile.birthDate;
+  let birthDateIso = "";
+  let birthDateFormatted = "";
+  let age = "";
+
+  if (rawBirth) {
+    const d = new Date(rawBirth);
+    if (!isNaN(d.getTime())) {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      birthDateIso = `${year}-${month}-${day}`;
+
+      birthDateFormatted = d.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
+
+      const today = new Date();
+      let calcAge = today.getFullYear() - d.getFullYear();
+      const mDiff = today.getMonth() - d.getMonth();
+      if (mDiff < 0 || (mDiff === 0 && today.getDate() < d.getDate())) {
+        calcAge--;
+      }
+      if (calcAge >= 0) age = String(calcAge);
+    }
+  }
+
+  const purokLabel = profile.purok
+    ? PUROK_LABELS[profile.purok as keyof typeof PUROK_LABELS] || String(profile.purok)
+    : "";
+  const purokRaw = profile.purok ? String(profile.purok) : "";
+
+  return {
+    fullName: [profile.firstName, profile.middleName, profile.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim() || profile.name || "",
+    firstName: profile.firstName ?? "",
+    middleName: profile.middleName ?? "",
+    lastName: profile.lastName ?? "",
+    email: profile.email ?? "",
+    mobileNumber: profile.mobileNumber ?? "",
+    purokLabel,
+    purokRaw,
+    address: purokLabel ? `${purokLabel}, Barangay Libtangin` : "Barangay Libtangin",
+    birthDateIso,
+    birthDateFormatted,
+    age,
+    idType: profile.id?.type ? String(profile.id.type).replace(/_/g, " ") : "",
+    idNumber: profile.id?.number ?? "",
+  };
+}
+
+/**
+ * Try to match a document field to profile data. Uses intelligent case-insensitive
+ * keyword matching and select-option mapping on dynamic document fields.
+ */
+export function matchFieldToProfile(
+  field: { id: string; label: string; type: string; options?: string[] },
   profile: ProfileInfo,
 ): string | null {
-  const l = label.toLowerCase();
+  const l = field.label.toLowerCase().trim();
+  const fieldType = field.type;
+  const options = field.options || [];
 
-  // Full name fields
+  const resolveOption = (targetValue: string): string | null => {
+    if (!targetValue) return null;
+    if (options.length === 0) return targetValue;
+
+    const lowerTarget = targetValue.toLowerCase().trim();
+    // 1. Exact match
+    const exact = options.find((opt) => opt.toLowerCase().trim() === lowerTarget);
+    if (exact) return exact;
+
+    // 2. Contains match (e.g. option "Purok 3" matches target "Purok 3, Barangay Libtangin")
+    const contains = options.find(
+      (opt) =>
+        lowerTarget.includes(opt.toLowerCase().trim()) ||
+        opt.toLowerCase().trim().includes(lowerTarget)
+    );
+    if (contains) return contains;
+
+    return targetValue;
+  };
+
+  // Full Name
   if (
     l.includes("full name") ||
     l.includes("complete name") ||
+    l.includes("applicant name") ||
+    l.includes("resident name") ||
+    l.includes("requester name") ||
+    l.includes("requestor name") ||
     (l.includes("name") &&
       !l.includes("first") &&
       !l.includes("last") &&
@@ -74,33 +167,112 @@ function matchFieldToProfile(
       !l.includes("father") &&
       !l.includes("mother") &&
       !l.includes("guardian") &&
+      !l.includes("child") &&
       !l.includes("document") &&
-      !l.includes("business"))
-  )
-    return profile.fullName;
+      !l.includes("business") &&
+      !l.includes("company"))
+  ) {
+    return profile.fullName ? resolveOption(profile.fullName) : null;
+  }
 
-  if (l.includes("first name")) return profile.firstName;
-  if (l.includes("middle name")) return profile.middleName;
-  if (l.includes("last name") || l.includes("surname")) return profile.lastName;
+  // First Name
+  if (l.includes("first name") || l.includes("given name")) {
+    return profile.firstName ? resolveOption(profile.firstName) : null;
+  }
 
-  // Address / purok
-  if (l.includes("address") || l.includes("purok")) return profile.address;
+  // Middle Name
+  if (l.includes("middle name") || l.includes("middle initial")) {
+    return profile.middleName ? resolveOption(profile.middleName) : null;
+  }
 
-  // Contact
+  // Last Name
+  if (l.includes("last name") || l.includes("surname") || l.includes("family name")) {
+    return profile.lastName ? resolveOption(profile.lastName) : null;
+  }
+
+  // Birth Date
+  if (
+    l.includes("birth date") ||
+    l.includes("date of birth") ||
+    l.includes("birthday") ||
+    l.includes("dob") ||
+    l.includes("birthdate")
+  ) {
+    if (fieldType === "date") {
+      return profile.birthDateIso || null;
+    }
+    return profile.birthDateIso || profile.birthDateFormatted || null;
+  }
+
+  // Age
+  if (
+    l.includes("age") &&
+    !l.includes("stage") &&
+    !l.includes("village") &&
+    !l.includes("message") &&
+    !l.includes("coverage")
+  ) {
+    return profile.age ? resolveOption(profile.age) : null;
+  }
+
+  // Purok / Zone / Sitio
+  if (l.includes("purok") || l.includes("zone") || l.includes("sitio")) {
+    if (options.length > 0) {
+      const match = resolveOption(profile.purokLabel);
+      if (match) return match;
+    }
+    return profile.purokLabel || profile.address || null;
+  }
+
+  // Address / Location
+  if (l.includes("address") || l.includes("residence") || l.includes("location")) {
+    if (options.length > 0) {
+      const match = resolveOption(profile.address) || resolveOption(profile.purokLabel);
+      if (match) return match;
+    }
+    return profile.address ? resolveOption(profile.address) : null;
+  }
+
+  // Contact / Phone
   if (
     l.includes("mobile") ||
     l.includes("contact") ||
     l.includes("phone") ||
-    l.includes("cellphone")
-  )
-    return profile.mobileNumber;
+    l.includes("cellphone") ||
+    l.includes("telephone") ||
+    l.includes("tel no")
+  ) {
+    return profile.mobileNumber ? resolveOption(profile.mobileNumber) : null;
+  }
 
-  // Date of birth — only for date-type fields
+  // Email
+  if (l.includes("email")) {
+    return profile.email ? resolveOption(profile.email) : null;
+  }
+
+  // ID Number
   if (
-    fieldType === "date" &&
-    (l.includes("birth") || l.includes("birthday") || l.includes("dob"))
-  )
-    return profile.birthDate;
+    (l.includes("id") || l.includes("identification")) &&
+    (l.includes("number") || l.includes("no") || l.includes("#"))
+  ) {
+    return profile.idNumber ? resolveOption(profile.idNumber) : null;
+  }
+
+  // ID Type
+  if (
+    (l.includes("id") || l.includes("identification")) &&
+    l.includes("type")
+  ) {
+    return profile.idType ? resolveOption(profile.idType) : null;
+  }
+
+  // Civil Status fallback
+  if (l.includes("civil") || l.includes("status")) {
+    if (options.length > 0) {
+      const singleOpt = options.find((o) => o.toLowerCase().trim() === "single");
+      if (singleOpt) return singleOpt;
+    }
+  }
 
   return null;
 }
@@ -169,9 +341,22 @@ export function RequestForm({
     editing?.method ?? null,
   );
   const [purpose, setPurpose] = useState(editing?.purpose ?? "");
-  const [answers, setAnswers] = useState<Record<string, string>>(
-    editing?.answers ?? {},
-  );
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
+    if (editing?.answers && Object.keys(editing.answers).length > 0) {
+      return editing.answers;
+    }
+    // Auto-fill matching dynamic fields from resident profile on new request
+    const initial: Record<string, string> = {};
+    if (profileInfo && type?.fields) {
+      for (const field of type.fields) {
+        const match = matchFieldToProfile(field, profileInfo);
+        if (match) {
+          initial[field.id] = match;
+        }
+      }
+    }
+    return initial;
+  });
   const [resubmitNote, setResubmitNote] = useState(
     editing?.resubmitNote ?? "",
   );
@@ -370,7 +555,7 @@ export function RequestForm({
       {profileInfo && !editing && type.fields.length > 0 && (() => {
         // Check if any fields can be matched to profile data
         const matchableCount = type.fields.filter(
-          (f) => matchFieldToProfile(f.label, f.type, profileInfo) !== null,
+          (f) => matchFieldToProfile(f, profileInfo) !== null,
         ).length;
         if (matchableCount === 0) return null;
         return (
@@ -378,16 +563,23 @@ export function RequestForm({
             <button
               type="button"
               onClick={() => {
+                let filledCount = 0;
                 const next = { ...answers };
                 for (const field of type.fields) {
-                  const match = matchFieldToProfile(field.label, field.type, profileInfo);
-                  // Only fill empty fields — don't overwrite user edits
-                  if (match && !(next[field.id] ?? "").trim()) {
-                    next[field.id] = match;
+                  const match = matchFieldToProfile(field, profileInfo);
+                  if (match) {
+                    if ((next[field.id] ?? "") !== match) {
+                      next[field.id] = match;
+                      filledCount++;
+                    }
                   }
                 }
                 setAnswers(next);
-                toast.success("Fields pre-filled from your profile.");
+                if (filledCount > 0) {
+                  toast.success(`Pre-filled ${filledCount} field${filledCount > 1 ? "s" : ""} from your resident profile.`);
+                } else {
+                  toast.info("All matching profile fields are already populated.");
+                }
               }}
               className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hover:border-primary/30 cursor-pointer"
             >

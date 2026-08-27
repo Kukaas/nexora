@@ -14,6 +14,7 @@ import { PUROK_LABELS } from "@/lib/purok";
 import type { DocumentTypeDTO } from "@/lib/documents";
 import {
   RequestForm,
+  buildProfileInfo,
   type RequestEditContext,
   type ProfileInfo,
 } from "../../../../_components/request-form";
@@ -96,22 +97,7 @@ export default async function ResidentRequestEditPage({
     resubmitNote: request.resubmitNote ?? "",
   };
 
-  const profileInfo: ProfileInfo | undefined = profile
-    ? {
-        fullName: [profile.firstName, profile.middleName, profile.lastName]
-          .filter(Boolean)
-          .join(" "),
-        firstName: profile.firstName ?? "",
-        middleName: profile.middleName ?? "",
-        lastName: profile.lastName ?? "",
-        mobileNumber: profile.mobileNumber ?? "",
-        purok: profile.purok ? PUROK_LABELS[profile.purok] : "",
-        birthDate: profile.birthDate ?? "",
-        address: profile.purok
-          ? `${PUROK_LABELS[profile.purok]}, Barangay Libtangin`
-          : "",
-      }
-    : undefined;
+  const profileInfo: ProfileInfo | undefined = buildProfileInfo(profile);
 
   return (
     <RequestForm

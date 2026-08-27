@@ -1,9 +1,9 @@
 ---
 name: nexora-design
-description: Master design system guide, component catalog, layout rules, and UI conventions for the entire Nexora Barangay Portal. Use whenever creating or modifying resident/official pages, forms, data tables, cards, navigation, state banners, or document templates.
+description: Master design system guide, component catalog, layout rules, and UI conventions for the entire Nexora Barangay Portal. Use when the user types /design, /ui-design, /nexora-design, or asks for frontend UI design, creating or modifying resident/official pages, forms, data tables, cards, navigation, state banners, or document templates.
 ---
 
-# Master Design System & Architectural Guidelines — Nexora Barangay Portal
+# Master Design System & Architectural Guidelines — Nexora Barangay Portal (`/design`)
 
 This skill is the single authoritative reference for the **Nexora Barangay Portal** design language, component suite, layout conventions, typography, and state verification rules.
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
+import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/session";
 import { getResidencyStatus } from "@/lib/profile";
 import { ResidentIncidentForm } from "../../../_components/resident-incident-form";
@@ -25,7 +26,27 @@ export default async function ResidentNewIncidentPage({
   const residency = await getResidencyStatus(session.user.id);
   if (residency !== "approved") redirect(`/resident/${id}/incidents`);
 
-  const userMobile = (session.user as { mobileNumber?: string | null }).mobileNumber ?? undefined;
+  // Fetch full resident profile details directly from database
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      name: true,
+      firstName: true,
+      lastName: true,
+      mobileNumber: true,
+      purok: true,
+    },
+  });
+
+  const reporterName =
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+    user?.name?.trim() ||
+    "Verified Resident";
+
+  const userMobile = user?.mobileNumber ?? undefined;
+  const defaultPurok = user?.purok
+    ? `Purok ${user.purok.replace(/^PUROK_/, "")}, Barangay Libtangin`
+    : undefined;
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,7 +68,9 @@ export default async function ResidentNewIncidentPage({
 
       <ResidentIncidentForm
         residentId={id}
+        reporterName={reporterName}
         defaultContact={userMobile}
+        defaultPurok={defaultPurok}
         verified={true}
       />
     </div>

@@ -80,11 +80,15 @@ const CATEGORIES = [
 
 export function ResidentIncidentForm({
   residentId,
+  reporterName,
   defaultContact,
+  defaultPurok,
   verified = true,
 }: {
   residentId: string;
+  reporterName?: string;
   defaultContact?: string;
+  defaultPurok?: string;
   verified?: boolean;
 }) {
   const router = useRouter();
@@ -93,16 +97,16 @@ export function ResidentIncidentForm({
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("NOISE_DISTURBANCE");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(defaultPurok ?? "");
   const [description, setDescription] = useState("");
   const [contactDigits, setContactDigits] = useState(() => {
     if (!defaultContact) return "";
-    return defaultContact.replace(/^0/, "").slice(0, 10);
+    return defaultContact.replace(/^0/, "").replace(/^\+63/, "").slice(0, 10);
   });
 
-  // Pre-fill helpers: detect when phone matches the profile value
+  // Pre-fill helpers: detect when phone/location match profile values
   const profileDigits = useMemo(
-    () => (defaultContact ? defaultContact.replace(/^0/, "").slice(0, 10) : ""),
+    () => (defaultContact ? defaultContact.replace(/^0/, "").replace(/^\+63/, "").slice(0, 10) : ""),
     [defaultContact],
   );
   const isPhonePrefilled = contactDigits === profileDigits && profileDigits.length > 0;
@@ -110,6 +114,11 @@ export function ResidentIncidentForm({
     () => setContactDigits(profileDigits),
     [profileDigits],
   );
+
+  const isLocationPrefilled = location === defaultPurok && !!defaultPurok;
+  const restoreDefaultPurok = useCallback(() => {
+    if (defaultPurok) setLocation(defaultPurok);
+  }, [defaultPurok]);
 
   // Redesigned Custom Date & Time State
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -254,6 +263,45 @@ export function ResidentIncidentForm({
           </div>
         </div>
       )}
+
+      {/* Reporter Identity Summary */}
+      <section className="flex flex-col gap-5 rounded-4xl border border-border bg-card p-6 shadow-sm ring-1 ring-foreground/5 dark:ring-foreground/10">
+        <div className="flex items-start gap-3 border-b border-border pb-4">
+          <div className="flex size-9 items-center justify-center rounded-2xl bg-primary/10 text-primary shrink-0">
+            <User className="size-4" aria-hidden />
+          </div>
+          <div className="flex flex-col gap-0.5 flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-semibold tracking-tight text-foreground">
+                Reporter Information (Filing Resident)
+              </h2>
+              <Badge variant="secondary" className="rounded-full text-xs font-normal border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                <CheckCircle2 className="mr-1 size-3" /> Profile Auto-Attached
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Your verified resident details are automatically associated with this incident report.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="flex flex-col gap-1 rounded-3xl bg-muted/40 p-3.5 border border-border/50">
+            <span className="text-[11px] font-medium text-muted-foreground">Reporter Full Name</span>
+            <span className="text-xs font-semibold text-foreground">{reporterName || "Verified Resident"}</span>
+          </div>
+          <div className="flex flex-col gap-1 rounded-3xl bg-muted/40 p-3.5 border border-border/50">
+            <span className="text-[11px] font-medium text-muted-foreground">Registered Address</span>
+            <span className="text-xs font-semibold text-foreground">{defaultPurok || "Barangay Libtangin"}</span>
+          </div>
+          <div className="flex flex-col gap-1 rounded-3xl bg-muted/40 p-3.5 border border-border/50">
+            <span className="text-[11px] font-medium text-muted-foreground">Contact Number</span>
+            <span className="text-xs font-semibold text-foreground font-mono">
+              {contactDigits ? `+63 ${contactDigits}` : "Not provided in profile"}
+            </span>
+          </div>
+        </div>
+      </section>
 
       {/* Categorized Multi-Column Section Grid */}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -504,13 +552,25 @@ export function ResidentIncidentForm({
               </div>
 
               <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="location"
-                  className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
-                >
-                  <MapPin className="size-3.5 text-muted-foreground" aria-hidden />
-                  Location / Purok Street <span className="text-destructive">*</span>
-                </label>
+                <div className="flex items-center justify-between gap-2">
+                  <label
+                    htmlFor="location"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+                  >
+                    <MapPin className="size-3.5 text-muted-foreground" aria-hidden />
+                    Location / Purok Street <span className="text-destructive">*</span>
+                  </label>
+                  {defaultPurok && location !== defaultPurok && (
+                    <button
+                      type="button"
+                      onClick={restoreDefaultPurok}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline cursor-pointer"
+                    >
+                      <Sparkles className="size-3 shrink-0" aria-hidden />
+                      Use my Purok
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="location"
                   type="text"
@@ -520,6 +580,12 @@ export function ResidentIncidentForm({
                   onChange={(e) => setLocation(e.target.value)}
                   className="h-10 rounded-2xl text-xs bg-background border-border"
                 />
+                {isLocationPrefilled && (
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <CheckCircle2 className="size-3 shrink-0" aria-hidden />
+                    Pre-filled with your registered Purok
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-col gap-2">
